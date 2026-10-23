@@ -393,6 +393,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-slate-50 border-b text-xs text-slate-500">
                     <tr>
+                      <th className="text-left p-3">Date (UTC+8)</th>
                       <th className="text-left p-3">Clock In</th>
                       <th className="text-left p-3">Clock Out</th>
                       <th className="text-left p-3">Total Hours</th>
