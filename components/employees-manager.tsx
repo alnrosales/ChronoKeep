@@ -9,6 +9,7 @@ type Employee = {
   role: string
   work_type: string
   shift_start: string | null
+  shift_ends: string | null
   department: string | null
   is_active: boolean
 }
@@ -47,6 +48,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
         role: form.role,
         work_type: form.work_type,
         shift_start: form.shift_start,
+		shift_ends: form.shift_ends,
         department: form.department,
         is_active: true
       })
@@ -55,6 +57,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       await supabase.from('profiles').update({
         work_type: form.work_type,
         shift_start: form.shift_start,
+		shift_start: form.shift_ends,
         department: form.department,
         role: form.role
       }).eq('id', data.user.id)
@@ -72,6 +75,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       role: editing.role,
       work_type: editing.work_type,
       shift_start: editing.shift_start,
+	  shift_ends: editing.shift_start,
       department: editing.department,
       is_active: editing.is_active
     }).eq('id', editing.id)
@@ -102,6 +106,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                 <select value={form.role} onChange={e=>setForm({...form, role: e.target.value})} className="h-9 rounded-xl border px-2 text-"><option value="employee">employee</option><option value="admin">admin</option></select>
                 <select value={form.work_type} onChange={e=>setForm({...form, work_type: e.target.value})} className="h-9 rounded-xl border px-2 text-"><option>Hybrid</option><option>Remote</option><option>Onsite</option></select>
                 <input type="time" value={form.shift_start} onChange={e=>setForm({...form, shift_start: e.target.value})} className="h-9 rounded-xl border px-3 text-" />
+				<input type="time" value={form.shift_ends} onChange={e=>setForm({...form, shift_ends: e.target.value})} className="h-9 rounded-xl border px-3 text-" />
                 <input value={form.department} onChange={e=>setForm({...form, department: e.target.value})} placeholder="Department" className="h-9 rounded-xl border px-3 text-" />
                 <button disabled={loading} onClick={handleAdd} className="h-9 rounded-xl bg-slate-900 text-white text-">{loading?'...':'Create'}</button>
               </div>
@@ -121,6 +126,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                           <td className="p-2"><select value={editing.role} onChange={e=>setEditing({...editing, role: e.target.value})} className="h-8 rounded-lg border px-2 text-"><option>employee</option><option>admin</option></select></td>
                           <td className="p-2"><select value={editing.work_type} onChange={e=>setEditing({...editing, work_type: e.target.value})} className="h-8 rounded-lg border px-2 text-"><option>Hybrid</option><option>Remote</option><option>Onsite</option></select></td>
                           <td className="p-2"><input type="time" value={editing.shift_start || '09:00'} onChange={e=>setEditing({...editing, shift_start: e.target.value})} className="h-8 rounded-lg border px-2 text-" /></td>
+						  <td className="p-2"><input type="time" value={editing.shift_ends || '15:00'} onChange={e=>setEditing({...editing, shift_start: e.target.value})} className="h-8 rounded-lg border px-2 text-" /></td>
                           <td className="p-2"><input value={editing.department || ''} onChange={e=>setEditing({...editing, department: e.target.value})} className="w-full h-8 rounded-lg border px-2 text-" /></td>
                           <td className="p-2"><input type="checkbox" checked={editing.is_active} onChange={e=>setEditing({...editing, is_active: e.target.checked})} /></td>
                           <td className="p-2 flex gap-1"><button onClick={handleEdit} className="px-2 py-1 rounded-full bg-emerald-600 text-white text-">Save</button><button onClick={()=>setEditing(null)} className="px-2 py-1 rounded-full border bg-white text-">Cancel</button></td>
