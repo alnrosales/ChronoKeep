@@ -64,7 +64,11 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
 
     // 2. Stop if Auth fails (avoids FK constraint error on profiles)
     if (error) {
-      alert(`Auth creation failed: ${error.message}`)
+      if (error.message.includes('already registered')) {
+        alert('This email is already registered in Supabase Auth. Please delete the user from Supabase Authentication -> Users table first, or use a different email.')
+      } else {
+        alert(`Auth creation failed: ${error.message}`)
+      }
       setLoading(false)
       return
     }
@@ -155,7 +159,25 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
             <div className="p-5 border-b flex justify-between items-center">
               <div className="font-semibold">Employees • {list.length}</div>
               <div className="flex gap-2">
-                <button onClick={() => setShowAddModal(true)} className="px-5 py-2 rounded-full bg-slate-900 text-white text-sm">+ Add</button>
+                <button 
+                  onClick={() => {
+                    // Reset form fields completely every time + Add is clicked
+                    setForm({
+                      full_name: '',
+                      email: '',
+                      role: 'employee',
+                      work_type: 'Hybrid',
+                      shift_start: '09:00',
+                      shift_ends: '15:00',
+                      department: '',
+                      password: ''
+                    })
+                    setShowAddModal(true)
+                  }} 
+                  className="px-5 py-2 rounded-full bg-slate-900 text-white text-sm"
+                >
+                  + Add
+                </button>
                 <button onClick={() => setOpen(false)} className="px-5 py-2 rounded-full border bg-white text-sm">Close</button>
               </div>
             </div>
