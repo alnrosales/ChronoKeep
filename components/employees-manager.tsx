@@ -327,4 +327,45 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                       <th className="text-left p-3">Date / Timestamp</th>
                       <th className="text-left p-3">Clock In</th>
                       <th className="text-left p-3">Clock Out</th>
-                      <th className="text
+                      <th className="text-left p-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workLogs.map((log, idx) => (
+                      <tr key={idx} className="border-b hover:bg-slate-50">
+                        <td className="p-3 text-xs text-slate-600">{new Date(log.created_at || log.date).toLocaleString()}</td>
+                        <td className="p-3 font-mono">{log.clock_in || log.start_time || '-'}</td>
+                        <td className="p-3 font-mono">{log.clock_out || log.end_time || '-'}</td>
+                        <td className="p-3"><span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-700">{log.status || 'Completed'}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mt-5 pt-3 border-t flex justify-between items-center text-xs text-slate-500">
+              <div>Total Records Found: {workLogs.length}</div>
+              <button onClick={() => setSummaryEmp(null)} className="px-5 py-2 rounded-full border bg-white text-sm">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
+          <div className="relative bg-white w-full max-w-md shadow-2xl p-7 rounded-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-5">
+              <h2 className="text-lg font-semibold">Add Employee</h2>
+              <button onClick={() => setShowAddModal(false)} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">✕</button>
+            </div>
+            
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Full Name *</label>
+                <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Full name" className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Email *</label
