@@ -293,6 +293,19 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
               </div>
 
               <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Work Type</label>
+                <select 
+                  value={form.work_type} 
+                  onChange={(e) => setForm({ ...form, work_type: e.target.value })} 
+                  className="w-full h-11 rounded-full border px-4 text-sm bg-white"
+                >
+                  <option value="Hybrid">Hybrid</option>
+                  <option value="Remote">Remote</option>
+                  <option value="Onsite">Onsite</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Shift Start</label>
                 <input type="time" value={form.shift_start} onChange={(e) => setForm({ ...form, shift_start: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
               </div>

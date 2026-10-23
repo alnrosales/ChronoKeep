@@ -14,12 +14,50 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true); setError('')
+    
+    // 1. Authenticate user credentials
     const { error, data } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setError(error.message); setLoading(false); return }
-    // get role
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single()
-    if (profile?.role === 'admin') router.push('/admin')
-    else router.push('/employee')
+    if (error) { 
+      setError(error.message)
+      setLoading(false) 
+      return 
+    }
+
+    const user = data.user
+    if (!user) {
+      setError('User not found.')
+      setLoading(false)
+      return
+    }
+
+    // 2. Fetch both role and is_active status from the profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, is_active')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile) {
+      await supabase.auth.signOut()
+      setError('Unable to fetch user profile.')
+      setLoading(false)
+      return
+    }
+
+    // 3. Prevent login if the user is flagged as inactive
+    if (profile.is_active === false) {
+      await supabase.auth.signOut()
+      setError('Your account has been deactivated. Please contact an administrator.')
+      setLoading(false)
+      return
+    }
+
+    // 4. Redirect based on role if active
+    if (profile.role === 'admin') {
+      router.push('/admin')
+    } else {
+      router.push('/employee')
+    }
   }
 
   const handleSignupDemo = async () => {
