@@ -4,8 +4,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@company.com')
-  const [password, setPassword] = useState('admin123')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -41,12 +41,12 @@ export default function LoginPage() {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-900 text-white grid place-items-center font-bold">C</div>
               <div className="font-semibold text-lg">ChronoKeep</div>
-              <span className="text-[11px] px-2 py-1 rounded-full bg-indigo-50 text-indigo-600">Production v3 • Supabase</span>
+              <span className="text-[11px] px-2 py-1 rounded-full bg-indigo-50 text-indigo-600">Version 5</span>
             </div>
             <h1 className="mt-12 text-[36px] font-bold leading-[1.1]">Tamper-proof timekeeping for distributed teams.</h1>
             <p className="mt-4 text-slate-500 text-[14px]">Next.js + Supabase. RLS secured. Every edit creates an immutable audit log with reason.</p>
           </div>
-          <div className="text-[12px] text-slate-400">Built for Vercel deployment. No localStorage — all in Postgres.</div>
+          <div className="text-[12px] text-slate-400">Built for Waho Solutions Inc.</div>
         </div>
         <div className="rounded-[24px] bg-white border p-6 sm:p-8 shadow-lg">
           <h2 className="text-[22px] font-semibold">Sign in</h2>
@@ -58,7 +58,7 @@ export default function LoginPage() {
             <button disabled={loading} className="w-full h-11 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-black">{loading ? 'Signing in...' : 'Sign in'}</button>
             <button type="button" onClick={handleSignupDemo} className="w-full h-11 rounded-xl border bg-white text-sm">Create demo account (needs email confirm off)</button>
           </form>
-          <div className="mt-6 text-[11px] text-slate-400">Tip: In Supabase Dashboard → Auth → Providers → Email → Disable confirmations for quick testing.</div>
+          <div className="mt-6 text-[11px] text-slate-400"> </div>
         </div>
       </div>
     </div>
