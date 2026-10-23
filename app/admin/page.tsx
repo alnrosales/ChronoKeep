@@ -31,8 +31,7 @@ export default async function AdminPage() {
             <div className="w-9 h-9 rounded-xl bg-slate-900 text-white grid place-items-center font-bold">C</div>
             <div><div className="font-semibold">ChronoKeep Admin</div><div className="text-[11px] text-slate-500">Welcome • {profile?.full_name} • {profile?.email} • PHT {today}</div></div>
           </div>
-          <div className="flex gap-2 items-center">
-            <div className="px-3 py-1.5 rounded-full bg-white border text-[12px]">Present: {presentToday}</div>
+          <div className="flex gap-2 items-center">            
             <SignOutButton />
           </div>
         </header>
@@ -56,9 +55,9 @@ export default async function AdminPage() {
               <thead className="sticky top-0 bg-slate-50 border-b text-[11px] text-slate-500">
                 <tr>
                   <th className="text-left p-2.5">Employee</th>
-                  <th className="text-left p-2.5">Date (PHT)</th>
-                  <th className="text-left p-2.5">Shift Starts</th>
-                  <th className="text-left p-2.5">Shift Ends</th>
+                  <th className="text-left p-2.5">Date</th>
+                  <th className="text-left p-2.5">Clock Starts</th>
+                  <th className="text-left p-2.5">Clock Ends</th>
                   <th className="text-left p-2.5">Mode</th>
                   <th className="text-left p-2.5">Actions</th>
                 </tr>
