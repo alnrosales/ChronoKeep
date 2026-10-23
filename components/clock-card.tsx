@@ -5,12 +5,37 @@ import { createClient } from '@/lib/supabase/client'
 function getManilaDate(){ return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }) }
 function getManilaTimeString(d: Date){ return d.toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
 
-export default function ClockCard({ profile, todayEntry, settings, openEntry, shift_starts, shift_ends }: any) {
+// Helper function to format 24hr or timestamp strings into 12hr format (e.g., "08:00:00" -> "8:00 AM")
+function formatTo12Hour(timeStr: string) {
+  if (!timeStr) return ''
+  // If the string is already a time or timestamp, let's parse it
+  try {
+    // If it's just "HH:mm:ss" or "HH:mm", prepend a dummy date so Date can parse it
+    const dateObj = timeStr.includes('T') || timeStr.includes('-') 
+      ? new Date(timeStr) 
+      : new Date(`1970-01-01T${timeStr}`)
+    
+    if (isNaN(dateObj.getTime())) return timeStr // Fallback if parsing fails
+
+    return dateObj.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  } catch {
+    return timeStr
+  }
+}
+
+export default function ClockCard({ profile, todayEntry, settings, openEntry }: any) {
   const supabase = createClient()
   const [now, setNow] = useState(new Date())
   const [mode, setMode] = useState<'Remote'|'Onsite'>('Remote')
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Extract shift_starts and shift_ends directly from the profile prop
+  const { shift_starts, shift_ends } = profile || {}
 
   useEffect(()=>{ const i=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(i) },[])
 
@@ -35,10 +60,14 @@ export default function ClockCard({ profile, todayEntry, settings, openEntry, sh
     <div className="rounded-[20px] bg-white border shadow-sm p-6">
       <div className="flex justify-between items-start">
         <div>
-          <div className="text-[11px] text-slate-500 tracking-wide">CURRENT TIME • {mode} MODE</div>
+          <div className="text-[11px] text-slate-500 tracking-wide">CURRENT TIME • {mode} MODE • PHT</div>
           <div className="mt-1 text-[36px] font-bold mono tracking-tight">{getManilaTimeString(now)}</div>
           <div className="text-[11px] text-slate-400">Philippines Time • Asia/Manila • UTC+8</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Your shift starts at {shift_starts} and it ends on {shift_ends}</div>
+          {shift_starts && shift_ends && (
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              Your shift starts at {formatTo12Hour(shift_starts)} and it ends on {formatTo12Hour(shift_ends)}
+            </div>
+          )}
           <div className="mt-2 flex gap-2">
             {['Remote','Onsite'].map(m=>(<button key={m} onClick={()=>setMode(m as any)} className={`px-3 py-1.5 rounded-full text-[12px] border ${mode===m?'bg-slate-900 text-white border-slate-900':'bg-white'}`}>{m}</button>))}
           </div>
