@@ -29,7 +29,7 @@ export default async function AdminPage() {
         <header className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-slate-900 text-white grid place-items-center font-bold">C</div>
-            <div><div className="font-semibold">ChronoKeep Admin</div><div className="text-[11px] text-slate-500">FLEXIBLE • FK FIX • Signout Fixed • {today}</div></div>
+            <div><div className="font-semibold">ChronoKeep Admin</div><div className="text-[11px] text-slate-500">Welcome • {profile?.full_name} • {profile?.email} • {today}</div></div>
           </div>
           <div className="flex gap-2 items-center">
             <div className="px-3 py-1.5 rounded-full bg-white border text-[12px]">Present: {presentToday}</div>
@@ -54,7 +54,7 @@ export default async function AdminPage() {
               <thead className="sticky top-0 bg-slate-50 border-b text-[11px] text-slate-500"><tr><th className="text-left p-2.5">Employee</th><th className="text-left p-2.5">Date</th><th className="text-left p-2.5">In → Out</th><th className="text-left p-2.5">Mode</th><th className="text-left p-2.5">Status</th></tr></thead>
               <tbody>
                 {entries?.map((e: any) => (
-                  <tr key={e.id} className="border-b hover:bg-slate-50"><td className="p-2.5 font-medium">{e.employee?.full_name || e.employee_id.slice(0,8)}</td><td className="p-2.5">{e.date}</td><td className="p-2.5">{e.clock_in ? new Date(e.clock_in).toLocaleTimeString() : '—'} → {e.clock_out ? new Date(e.clock_out).toLocaleTimeString() : 'ONGOING'}</td><td className="p-2.5">{e.mode}</td><td className="p-2.5">{e.status}</td></tr>
+                  <tr key={e.id} className="border-b hover:bg-slate-50"><td className="p-2.5 font-medium">{e.employee?.full_name || e.employee_id.slice(0,8)}</td><td className="p-2.5">{e.date}</td><td className="p-2.5">{e.clock_in ? new Date(e.clock_in).toLocaleString('en-PH', {timeZone: 'Asia/Manila', hour12: true}) : '—'} → {e.clock_out ? new Date(e.clock_out).toLocaleString('en-PH', {timeZone: 'Asia/Manila', hour12: true}) : 'ONGOING'}</td><td className="p-2.5">{e.mode}</td><td className="p-2.5">{e.status}</td></tr>
                 ))}
                 {(!entries || entries.length===0) && <tr><td colSpan={5} className="p-8 text-center text-slate-400">No records. Run: select * from time_entries to verify DB has data. If you see 2 rows in Supabase Table Editor, this query will show them now that FK is fixed.</td></tr>}
               </tbody>

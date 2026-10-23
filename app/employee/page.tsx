@@ -18,7 +18,7 @@ export default async function EmployeePage() {
         <header className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-slate-900 text-white grid place-items-center font-bold">C</div>
-            <div><div className="font-semibold">ChronoKeep</div><div className="text-[11px] text-slate-500">Employee • {profile?.full_name} • Flexible • Signout Fixed</div></div>
+            <div><div className="font-semibold">ChronoKeep</div><div className="text-[11px] text-slate-500">Employee • {profile?.full_name} • {profile?.email}</div></div>
           </div>
           <SignOutButton />
         </header>
@@ -29,8 +29,8 @@ export default async function EmployeePage() {
             <div className="mt-4 space-y-2 max-h-[500px] overflow-auto pr-1">
               {history?.map((e: any) => (
                 <div key={e.id} className="flex justify-between items-center text-[12px] p-2.5 rounded-xl border bg-slate-50">
-                  <div><div className="font-medium">{e.date} • {new Date(e.clock_in).toLocaleTimeString()}</div><div className="text-[11px] text-slate-500">{e.mode} • {e.status} {e.clock_out ? '' : '• ONGOING'}</div></div>
-                  <div className="text-right mono"><div>{e.clock_in ? new Date(e.clock_in).toLocaleTimeString() : '—'} → {e.clock_out ? new Date(e.clock_out).toLocaleTimeString() : '...'}</div></div>
+                  <div><div className="font-medium">{e.date} • {new Date(e.clock_in).toLocaleString('en-PH', {timeZone: 'Asia/Manila', hour12: true})}</div><div className="text-[11px] text-slate-500">{e.mode} • {e.status} {e.clock_out ? '' : '• ONGOING'}</div></div>
+                  <div className="text-right mono"><div>{e.clock_in ? new Date(e.clock_in).toLocaleString('en-PH', {timeZone: 'Asia/Manila', hour12: true}) : '—'} → {e.clock_out ? new Date(e.clock_out).toLocaleString('en-PH', {timeZone: 'Asia/Manila', hour12: true}) : '...'}</div></div>
                 </div>
               ))}
             </div>

@@ -36,8 +36,7 @@ export default function ClockCard({ profile, todayEntry, settings, openEntry }: 
           </div>
         </div>
         <div className={`px-2.5 py-1 rounded-full text-[11px] border ${activeEntry?'bg-emerald-50 text-emerald-700 border-emerald-200':'bg-slate-50'}`}>{activeEntry?'● On Duty':'Off Duty'}</div>
-      </div>
-      <div className="mt-4"><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Add note for this shift (optional)" className="w-full rounded-xl border p-2.5 text-[12px] min-h-[70px]" /></div>
+      </div>      
       <div className="mt-4">
         {!activeEntry ? (
           <button disabled={loading} onClick={clockIn} className="w-full h-11 rounded-xl bg-slate-900 text-white text-sm font-medium">{loading?'...':`Clock In • ${mode}`}</button>
