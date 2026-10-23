@@ -57,7 +57,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       await supabase.from('profiles').update({
         work_type: form.work_type,
         shift_start: form.shift_start,
-		shift_start: form.shift_ends,
+		shift_ends: form.shift_ends,
         department: form.department,
         role: form.role
       }).eq('id', data.user.id)
