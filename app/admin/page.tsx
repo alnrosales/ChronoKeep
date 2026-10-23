@@ -4,6 +4,14 @@ import SignOutButton from '@/components/signout-button'
 import DeleteButton from '@/components/delete-button'
 import EmployeesManager from '@/components/employees-manager'
 
+function calculateTotalHours(clockIn?: string | null, clockOut?: string | null): string {
+  if (!clockIn || !clockOut) return '—'
+  const diffMs = new Date(clockOut).getTime() - new Date(clockIn).getTime()
+  if (diffMs <= 0) return '0.00 hrs'
+  const hours = diffMs / (1000 * 60 * 60)
+  return `${hours.toFixed(2)} hrs`
+}
+
 export default async function AdminPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -54,7 +62,15 @@ export default async function AdminPage() {
           <div className="overflow-auto max-h-">
             <table className="w-full text-">
               <thead className="sticky top-0 bg-slate-50 border-b text- text-slate-500">
-                <tr><th className="text-left p-2.5">Employee</th><th className="text-left p-2.5">Date</th><th className="text-left p-2.5">Clock Starts</th><th className="text-left p-2.5">Clock Ends</th><th className="text-left p-2.5">Mode</th><th className="text-left p-2.5">Actions</th></tr>
+                <tr>
+                  <th className="text-left p-2.5">Employee</th>
+                  <th className="text-left p-2.5">Date</th>
+                  <th className="text-left p-2.5">Clock In</th>
+                  <th className="text-left p-2.5">Clock Out</th>
+                  <th className="text-left p-2.5">Total Working Hours</th>
+                  <th className="text-left p-2.5">Mode</th>
+                  <th className="text-left p-2.5">Actions</th>
+                </tr>
               </thead>
               <tbody>
                 {entries?.map((e: any) => (
@@ -63,6 +79,7 @@ export default async function AdminPage() {
                     <td className="p-2.5">{e.date}</td>
                     <td className="p-2.5 font-mono">{e.clock_in ? new Date(e.clock_in).toLocaleString('en-PH', {timeZone: 'Asia/Manila', hour12: true}) : '—'}</td>
                     <td className="p-2.5 font-mono">{e.clock_out ? new Date(e.clock_out).toLocaleString('en-PH', {timeZone: 'Asia/Manila', hour12: true}) : <span className="text-emerald-600">ONGOING</span>}</td>
+                    <td className="p-2.5 font-mono font-medium">{calculateTotalHours(e.clock_in, e.clock_out)}</td>
                     <td className="p-2.5">{e.mode}</td>
                     <td className="p-2.5"><DeleteButton id={e.id} /></td>
                   </tr>
