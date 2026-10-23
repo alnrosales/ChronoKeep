@@ -50,7 +50,7 @@ export default async function AdminPage() {
         </div>
 
         <div className="rounded- bg-white border shadow-sm overflow-hidden">
-          <div className="p-4 border-b"><div className="font-medium text-">Time Records (latest 100) • PHT UTC+8</div></div>
+          <div className="p-4 border-b"><div className="font-medium text-">Time Records (latest 100)</div></div>
           <div className="overflow-auto max-h-">
             <table className="w-full text-">
               <thead className="sticky top-0 bg-slate-50 border-b text- text-slate-500">

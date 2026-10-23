@@ -33,9 +33,23 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   const [loading, setLoading] = useState(false)
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete employee?')) return
-    const { error } = await supabase.from('profiles').delete().eq('id', id)
-    if (!error) setList((prev) => prev.filter((e) => e.id !== id))
+    if (!confirm('Delete employee completely from Auth and database?')) return
+    
+    setLoading(true)
+    const response = await fetch('/api/delete-employee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: id })
+    })
+
+    const result = await response.json()
+    setLoading(false)
+
+    if (!response.ok) {
+      alert(result.error || 'Failed to delete user')
+    } else {
+      setList((prev) => prev.filter((e) => e.id !== id))
+    }
   }
 
   const handleAdd = async () => {
@@ -161,7 +175,6 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
               <div className="flex gap-2">
                 <button 
                   onClick={() => {
-                    // Reset form fields completely every time + Add is clicked
                     setForm({
                       full_name: '',
                       email: '',
@@ -221,7 +234,10 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                           <td className="p-3 font-mono">{emp.shift_ends || '15:00'}</td>
                           <td className="p-3">{emp.department || '-'}</td>
                           <td className="p-3">{emp.is_active ? 'Yes' : 'No'}</td>
-                          <td className="p-3 flex gap-1"><button onClick={() => setEditing(emp)} className="px-3 py-1 rounded-full border text-xs">Edit</button><button onClick={() => handleDelete(emp.id)} className="px-3 py-1 rounded-full bg-red-50 text-red-600 border text-xs">Delete</button></td>
+                          <td className="p-3 flex gap-1">
+                            <button onClick={() => setEditing(emp)} className="px-3 py-1 rounded-full border text-xs">Edit</button>
+                            <button disabled={loading} onClick={() => handleDelete(emp.id)} className="px-3 py-1 rounded-full bg-red-50 text-red-600 border text-xs">Delete</button>
+                          </td>
                         </>
                       )}
                     </tr>
