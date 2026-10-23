@@ -69,7 +69,7 @@ export default function ClockCard({ profile, todayEntry, settings, openEntry }: 
           
           {/* Fixed typo from shift_start to shift_starts & made line mobile-friendly */}
           <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-            Shift: <span className="font-medium text-slate-600">{formatTo12Hour(shift_starts)}</span> – <span className="font-medium text-slate-600">{formatTo12Hour(shift_ends)}</span>
+            Shift: <span className="font-medium text-slate-600">{formatTo12Hour(shift_start)}</span> – <span className="font-medium text-slate-600">{formatTo12Hour(shift_ends)}</span>
           </div>
 
           <div className="mt-3 flex gap-2">
@@ -77,8 +77,8 @@ export default function ClockCard({ profile, todayEntry, settings, openEntry }: 
           </div>
         </div>
 
-        {/* Status Badge */}
-        <div className={`self-start px-2.5 py-1 rounded-full text-[11px] border whitespace-nowrap ${activeEntry?'bg-emerald-50 text-emerald-700 border-emerald-200':'bg-slate-50 text-slate-600'}`}>
+        {/* Status Badge: Centered on mobile via self-center, top-aligned on sm screens via sm:self-start */}
+        <div className={`self-center sm:self-start px-3 py-1 rounded-full text-[11px] border whitespace-nowrap ${activeEntry?'bg-emerald-50 text-emerald-700 border-emerald-200':'bg-slate-50 text-slate-600'}`}>
           {activeEntry?'● On Duty':'Off Duty'}
         </div>
       </div>      
