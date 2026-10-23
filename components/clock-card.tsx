@@ -32,8 +32,8 @@ export default function ClockCard({ profile, todayEntry, settings, openEntry }: 
   const [note, setNote] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // Extract shift_starts and shift_ends directly from the profile prop
-  const shift_starts = profile?.shift_starts
+  // Extract shift_start (singular) and shift_ends directly from the profile prop
+  const shift_start = profile?.shift_start
   const shift_ends = profile?.shift_ends
 
   useEffect(()=>{ const i=setInterval(()=>setNow(new Date()),1000); return ()=>clearInterval(i) },[])
