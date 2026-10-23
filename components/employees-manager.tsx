@@ -43,45 +43,60 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       alert('Name and email required')
       return
     }
-    setLoading(true)
-    let newId = crypto.randomUUID()
+    if (!form.password) {
+      alert('Password is required')
+      return
+    }
 
+    setLoading(true)
+
+    // 1. Register user via Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email: form.email,
-      password: form.password || 'Password123!',
-      options: { data: { full_name: form.full_name, role: form.role } }
+      password: form.password,
+      options: { 
+        data: { 
+          full_name: form.full_name, 
+          role: form.role 
+        } 
+      }
     })
 
+    // 2. Stop if Auth fails (avoids FK constraint error on profiles)
     if (error) {
-      const { error: insertErr } = await supabase.from('profiles').insert({
-        id: newId,
-        email: form.email,
-        full_name: form.full_name,
-        role: form.role,
-        work_type: form.work_type,
-        shift_start: form.shift_start,
-        shift_ends: form.shift_ends,
-        department: form.department,
-        is_active: true
-      })
-      if (insertErr) {
-        alert(insertErr.message)
-        setLoading(false)
-        return
-      }
-    } else if (data.user) {
-      newId = data.user.id
-      await supabase.from('profiles').update({
-        work_type: form.work_type,
-        shift_start: form.shift_start,
-        shift_ends: form.shift_ends,
-        department: form.department,
-        role: form.role
-      }).eq('id', newId)
+      alert(`Auth creation failed: ${error.message}`)
+      setLoading(false)
+      return
+    }
+
+    const user = data.user
+    if (!user) {
+      alert('User could not be created.')
+      setLoading(false)
+      return
+    }
+
+    // 3. Upsert profile with the valid Auth user ID
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: user.id,
+      email: form.email,
+      full_name: form.full_name,
+      role: form.role,
+      work_type: form.work_type,
+      shift_start: form.shift_start,
+      shift_ends: form.shift_ends,
+      department: form.department || null,
+      is_active: true
+    })
+
+    if (profileError) {
+      alert(`Profile error: ${profileError.message}`)
+      setLoading(false)
+      return
     }
 
     const newEmployee: Employee = {
-      id: newId,
+      id: user.id,
       full_name: form.full_name,
       email: form.email,
       role: form.role,
@@ -93,7 +108,16 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     }
 
     setList((prev) => [...prev, newEmployee])
-    setForm({ full_name: '', email: '', role: 'employee', work_type: 'Hybrid', shift_start: '09:00', shift_ends: '15:00', department: '', password: '' })
+    setForm({ 
+      full_name: '', 
+      email: '', 
+      role: 'employee', 
+      work_type: 'Hybrid', 
+      shift_start: '09:00', 
+      shift_ends: '15:00', 
+      department: '', 
+      password: '' 
+    })
     setLoading(false)
     setShowAddModal(false)
   }
