@@ -19,7 +19,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   const [list, setList] = useState<Employee[]>(employees)
   const [editing, setEditing] = useState<Employee | null>(null)
   const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState({ full_name: '', email: '', role: 'employee', work_type: 'Hybrid', shift_start: '09:00', department: '', password: '' })
+  const [form, setForm] = useState({ full_name: '', email: '', role: 'employee', work_type: 'Hybrid', shift_start: '09:00', shift_ends: '15:00', department: '', password: '' })
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
 
