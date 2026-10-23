@@ -459,4 +459,42 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Start
+                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Start</label>
+                <input type="time" value={form.shift_start} onChange={(e) => setForm({ ...form, shift_start: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Ends</label>
+                <input type="time" value={form.shift_ends} onChange={(e) => setForm({ ...form, shift_ends: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Department</label>
+                <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Department" className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Role</label>
+                <select
+                  value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  className="w-full h-11 rounded-full border px-4 text-sm bg-white"
+                >
+                  <option value="employee">employee</option>
+                  <option value="admin">admin</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setShowAddModal(false)} className="px-5 py-2 rounded-full border bg-white text-sm">Cancel</button>
+              <button disabled={loading} onClick={handleAdd} className="px-5 py-2 rounded-full bg-slate-900 text-white text-sm disabled:opacity-50">
+                {loading ? 'Adding...' : 'Add Employee'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
