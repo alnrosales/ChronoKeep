@@ -306,18 +306,18 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
               </div>
             </div>
             <div className="overflow-auto flex-1">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[1000px] table-fixed text-sm">
                 <thead className="sticky top-0 bg-slate-50 border-b text-xs text-slate-500">
                   <tr>
-                    <th className="text-left p-3">Full Name</th>
-                    <th className="text-left p-3">Email</th>
-                    <th className="text-left p-3">Role</th>
-                    <th className="text-left p-3">Work Type</th>
-                    <th className="text-left p-3">Shift Start</th>
-                    <th className="text-left p-3">Shift Ends</th>
-                    <th className="text-left p-3">Department</th>
-                    <th className="text-left p-3">Active</th>
-                    <th className="text-left p-3">Actions</th>
+                    <th className="text-left p-3 w-44">Full Name</th>
+                    <th className="text-left p-3 w-56">Email</th>
+                    <th className="text-left p-3 w-28">Role</th>
+                    <th className="text-left p-3 w-28">Work Type</th>
+                    <th className="text-left p-3 w-32">Shift Start</th>
+                    <th className="text-left p-3 w-32">Shift Ends</th>
+                    <th className="text-left p-3 w-36">Department</th>
+                    <th className="text-left p-3 w-20">Active</th>
+                    <th className="text-left p-3 w-44">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -325,19 +325,24 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                     <tr key={emp.id} className="border-b hover:bg-slate-50">
                       {editing?.id === emp.id ? (
                         <>
-                          <td className="p-2"><input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} className="w-full h-8 rounded-full border px-3 text-sm" /></td>
-                          <td className="p-2"><input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} className="w-full h-8 rounded-full border px-3 text-sm" /></td>
-                          <td className="p-2"><select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })} className="h-8 rounded-full border px-2 text-sm"><option>employee</option><option>admin</option></select></td>
-                          <td className="p-2"><select value={editing.work_type} onChange={(e) => setEditing({ ...editing, work_type: e.target.value })} className="h-8 rounded-full border px-2 text-sm"><option>Hybrid</option><option>Remote</option><option>Onsite</option></select></td>
-                          <td className="p-2"><input type="time" value={editing.shift_start || '09:00'} onChange={(e) => setEditing({ ...editing, shift_start: e.target.value })} className="h-8 rounded-full border px-2 text-sm" /></td>
-                          <td className="p-2"><input type="time" value={editing.shift_ends || '15:00'} onChange={(e) => setEditing({ ...editing, shift_ends: e.target.value })} className="h-8 rounded-full border px-2 text-sm" /></td>
-                          <td className="p-2"><input value={editing.department || ''} onChange={(e) => setEditing({ ...editing, department: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm" /></td>
-                          <td className="p-2"><input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} /></td>
-                          <td className="p-2 flex gap-1"><button onClick={handleEdit} className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs">Save</button><button onClick={() => setEditing(null)} className="px-3 py-1 rounded-full border text-xs">Cancel</button></td>
+                          <td className="p-2 align-middle"><input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} className="w-full h-8 rounded-full border px-3 text-sm" /></td>
+                          <td className="p-2 align-middle"><input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} className="w-full h-8 rounded-full border px-3 text-sm" /></td>
+                          <td className="p-2 align-middle"><select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm"><option>employee</option><option>admin</option></select></td>
+                          <td className="p-2 align-middle"><select value={editing.work_type} onChange={(e) => setEditing({ ...editing, work_type: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm"><option>Hybrid</option><option>Remote</option><option>Onsite</option></select></td>
+                          <td className="p-2 align-middle"><input type="time" value={editing.shift_start || '09:00'} onChange={(e) => setEditing({ ...editing, shift_start: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm" /></td>
+                          <td className="p-2 align-middle"><input type="time" value={editing.shift_ends || '15:00'} onChange={(e) => setEditing({ ...editing, shift_ends: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm" /></td>
+                          <td className="p-2 align-middle"><input value={editing.department || ''} onChange={(e) => setEditing({ ...editing, department: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm" /></td>
+                          <td className="p-2 align-middle"><input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} /></td>
+                          <td className="p-2 align-middle">
+                            <div className="flex gap-1">
+                              <button onClick={handleEdit} className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs">Save</button>
+                              <button onClick={() => setEditing(null)} className="px-3 py-1 rounded-full border text-xs">Cancel</button>
+                            </div>
+                          </td>
                         </>
                       ) : (
                         <>
-                          <td className="p-3 font-medium">
+                          <td className="p-3 align-middle font-medium break-words">
                             <button 
                               onClick={() => handleOpenSummary(emp)}
                               className="text-left text-slate-900 hover:text-indigo-600 hover:underline cursor-pointer font-medium focus:outline-none"
@@ -346,16 +351,18 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                               {emp.full_name}
                             </button>
                           </td>
-                          <td className="p-3">{emp.email}</td>
-                          <td className="p-3">{emp.role}</td>
-                          <td className="p-3">{emp.work_type}</td>
-                          <td className="p-3 font-mono">{emp.shift_start || '09:00'}</td>
-                          <td className="p-3 font-mono">{emp.shift_ends || '15:00'}</td>
-                          <td className="p-3">{emp.department || '-'}</td>
-                          <td className="p-3">{emp.is_active ? 'Yes' : 'No'}</td>
-                          <td className="p-3 flex gap-1">
-                            <button onClick={() => setEditing(emp)} className="px-3 py-1 rounded-full border text-xs">Edit</button>
-                            <button disabled={loading} onClick={() => handleDelete(emp.id)} className="px-3 py-1 rounded-full bg-red-50 text-red-600 border text-xs">Delete</button>
+                          <td className="p-3 align-middle break-words">{emp.email}</td>
+                          <td className="p-3 align-middle">{emp.role}</td>
+                          <td className="p-3 align-middle">{emp.work_type}</td>
+                          <td className="p-3 align-middle font-mono">{emp.shift_start || '09:00'}</td>
+                          <td className="p-3 align-middle font-mono">{emp.shift_ends || '15:00'}</td>
+                          <td className="p-3 align-middle break-words">{emp.department || '-'}</td>
+                          <td className="p-3 align-middle">{emp.is_active ? 'Yes' : 'No'}</td>
+                          <td className="p-3 align-middle">
+                            <div className="flex gap-1">
+                              <button onClick={() => setEditing(emp)} className="px-3 py-1 rounded-full border text-xs">Edit</button>
+                              <button disabled={loading} onClick={() => handleDelete(emp.id)} className="px-3 py-1 rounded-full bg-red-50 text-red-600 border text-xs">Delete</button>
+                            </div>
                           </td>
                         </>
                       )}
@@ -392,10 +399,10 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-slate-50 border-b text-xs text-slate-500">
                     <tr>
-                      <th className="text-left p-3">Date (UTC+8)</th>
+                      <th className="text-left p-3">Date</th>
                       <th className="text-left p-3">Clock In</th>
                       <th className="text-left p-3">Clock Out</th>
-                      <th className="text-left p-3">Total Hours</th>
+                      <th className="text-left p-3">Total Work Hours</th>
                     </tr>
                   </thead>
                   <tbody>
