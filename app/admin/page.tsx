@@ -30,7 +30,7 @@ export default async function AdminPage() {
         <header className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-slate-900 text-white grid place-items-center font-bold">C</div>
-            <div><div className="font-semibold">ChronoKeep Admin</div><div className="text- text-slate-500">Welcome • {profile?.full_name} • {profile?.email} • PHT {today}</div></div>
+            <div><div className="font-semibold">ChronoKeep Admin</div><div className="text- text-slate-500">Welcome • {profile?.full_name} • {profile?.email} • {today}</div></div>
           </div>
           <div className="flex gap-2 items-center"><SignOutButton /></div>
         </header>
