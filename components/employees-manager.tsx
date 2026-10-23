@@ -73,9 +73,8 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     setSummaryEmp(emp)
     setLoadingLogs(true)
     try {
-      // Change 'time_logs' to your actual attendance/time records table name if different
       const { data, error } = await supabase
-        .from('time_logs')
+        .from('time_entries')
         .select('*')
         .eq('user_id', emp.id)
         .order('created_at', { ascending: false })
@@ -270,7 +269,15 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                         </>
                       ) : (
                         <>
-                          <td className="p-3 font-medium">{emp.full_name}</td>
+                          <td className="p-3 font-medium">
+                            <button 
+                              onClick={() => handleOpenSummary(emp)}
+                              className="text-left text-slate-900 hover:text-indigo-600 hover:underline cursor-pointer font-medium focus:outline-none"
+                              title="Click to view working records summary"
+                            >
+                              {emp.full_name}
+                            </button>
+                          </td>
                           <td className="p-3">{emp.email}</td>
                           <td className="p-3">{emp.role}</td>
                           <td className="p-3">{emp.work_type}</td>
@@ -279,7 +286,6 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                           <td className="p-3">{emp.department || '-'}</td>
                           <td className="p-3">{emp.is_active ? 'Yes' : 'No'}</td>
                           <td className="p-3 flex gap-1">
-                            <button onClick={() => handleOpenSummary(emp)} className="px-3 py-1 rounded-full border text-xs bg-slate-50 hover:bg-slate-100">Summary</button>
                             <button onClick={() => setEditing(emp)} className="px-3 py-1 rounded-full border text-xs">Edit</button>
                             <button disabled={loading} onClick={() => handleDelete(emp.id)} className="px-3 py-1 rounded-full bg-red-50 text-red-600 border text-xs">Delete</button>
                           </td>
@@ -321,92 +327,4 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                       <th className="text-left p-3">Date / Timestamp</th>
                       <th className="text-left p-3">Clock In</th>
                       <th className="text-left p-3">Clock Out</th>
-                      <th className="text-left p-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {workLogs.map((log, idx) => (
-                      <tr key={idx} className="border-b hover:bg-slate-50">
-                        <td className="p-3 text-xs text-slate-600">{new Date(log.created_at || log.date).toLocaleString()}</td>
-                        <td className="p-3 font-mono">{log.clock_in || log.start_time || '-'}</td>
-                        <td className="p-3 font-mono">{log.clock_out || log.end_time || '-'}</td>
-                        <td className="p-3"><span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-700">{log.status || 'Completed'}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            <div className="mt-5 pt-3 border-t flex justify-between items-center text-xs text-slate-500">
-              <div>Total Records Found: {workLogs.length}</div>
-              <button onClick={() => setSummaryEmp(null)} className="px-5 py-2 rounded-full border bg-white text-sm">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showAddModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
-          <div className="relative bg-white w-full max-w-md shadow-2xl p-7 rounded-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-5">
-              <h2 className="text-lg font-semibold">Add Employee</h2>
-              <button onClick={() => setShowAddModal(false)} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">✕</button>
-            </div>
-            
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Full Name *</label>
-                <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Full name" className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Email *</label>
-                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email address" className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Password *</label>
-                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password" className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Work Type</label>
-                <select 
-                  value={form.work_type} 
-                  onChange={(e) => setForm({ ...form, work_type: e.target.value })} 
-                  className="w-full h-11 rounded-full border px-4 text-sm bg-white"
-                >
-                  <option value="Hybrid">Hybrid</option>
-                  <option value="Remote">Remote</option>
-                  <option value="Onsite">Onsite</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Start</label>
-                <input type="time" value={form.shift_start} onChange={(e) => setForm({ ...form, shift_start: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Ends</label>
-                <input type="time" value={form.shift_ends} onChange={(e) => setForm({ ...form, shift_ends: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Department</label>
-                <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Department" className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowAddModal(false)} className="flex-1 h-11 rounded-full border text-sm">Cancel</button>
-              <button disabled={loading} onClick={handleAdd} className="flex-1 h-11 rounded-full bg-slate-900 text-white text-sm">{loading ? 'Creating...' : 'Create'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  )
-}
+                      <th className="text
