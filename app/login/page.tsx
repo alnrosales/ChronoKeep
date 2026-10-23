@@ -43,20 +43,20 @@ export default function LoginPage() {
               <div className="font-semibold text-lg">ChronoKeep</div>
               <span className="text-[11px] px-2 py-1 rounded-full bg-indigo-50 text-indigo-600">Version 5</span>
             </div>
-            <h1 className="mt-12 text-[36px] font-bold leading-[1.1]">Tamper-proof timekeeping for distributed teams.</h1>
-            <p className="mt-4 text-slate-500 text-[14px]">Next.js + Supabase. RLS secured. Every edit creates an immutable audit log with reason.</p>
+            <h1 className="mt-12 text-[36px] font-bold leading-[1.1]">Timekeeper for distributed teams.</h1>
+            <p className="mt-4 text-slate-500 text-[14px]"> </p>
           </div>
           <div className="text-[12px] text-slate-400">Built for Waho Solutions Inc.</div>
         </div>
         <div className="rounded-[24px] bg-white border p-6 sm:p-8 shadow-lg">
           <h2 className="text-[22px] font-semibold">Sign in</h2>
-          <p className="mt-1 text-[13px] text-slate-500">Use Supabase Auth. Create accounts in Supabase Dashboard first.</p>
+          <p className="mt-1 text-[13px] text-slate-500"> </p>
           <form onSubmit={handleLogin} className="mt-6 space-y-4">
             <div><label className="text-[12px] text-slate-500">Email</label><input value={email} onChange={e=>setEmail(e.target.value)} className="mt-1 w-full h-11 rounded-xl border px-3 text-sm" /></div>
             <div><label className="text-[12px] text-slate-500">Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="mt-1 w-full h-11 rounded-xl border px-3 text-sm" /></div>
             {error && <div className="text-[12px] text-red-600 bg-red-50 border border-red-200 p-2.5 rounded-xl">{error}</div>}
             <button disabled={loading} className="w-full h-11 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-black">{loading ? 'Signing in...' : 'Sign in'}</button>
-            <button type="button" onClick={handleSignupDemo} className="w-full h-11 rounded-xl border bg-white text-sm">Create demo account (needs email confirm off)</button>
+            
           </form>
           <div className="mt-6 text-[11px] text-slate-400"> </div>
         </div>
