@@ -56,29 +56,39 @@ export default function ClockCard({ profile, todayEntry, settings, openEntry }: 
   }
 
   return (
-    <div className="rounded-[20px] bg-white border shadow-sm p-6">
-      <div className="flex justify-between items-start">
-        <div>
-          <div className="text-[11px] text-slate-500 tracking-wide">CURRENT TIME • {mode} MODE • PHT</div>
-          <div className="mt-1 text-[36px] font-bold mono tracking-tight">{getManilaTimeString(now)}</div>
+    <div className="rounded-[20px] bg-white border shadow-sm p-4 sm:p-6">
+      {/* Top Section: Stacks on mobile, side-by-side on larger screens */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+        <div className="w-full">
+          <div className="text-[11px] text-slate-500 tracking-wide">CURRENT TIME • {mode} MODE</div>
+          
+          {/* Responsive clock size: slightly smaller on mobile so it doesn't wrap awkwardly */}
+          <div className="mt-1 text-[30px] sm:text-[36px] font-bold mono tracking-tight">{getManilaTimeString(now)}</div>
+          
           <div className="text-[11px] text-slate-400">Philippines Time • Asia/Manila • UTC+8</div>
           
-          {/* Shift text with explicit alignment and fallback */}
-          <div className="text-[11px] text-slate-400 mt-0.5">
-            Your shift starts at <span className="font-medium text-slate-600">{formatTo12Hour(shift_starts)}</span> and it ends on <span className="font-medium text-slate-600">{formatTo12Hour(shift_ends)}</span>
+          {/* Fixed typo from shift_start to shift_starts & made line mobile-friendly */}
+          <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+            Shift: <span className="font-medium text-slate-600">{formatTo12Hour(shift_starts)}</span> – <span className="font-medium text-slate-600">{formatTo12Hour(shift_ends)}</span>
           </div>
 
-          <div className="mt-2 flex gap-2">
-            {['Remote','Onsite'].map(m=>(<button key={m} onClick={()=>setMode(m as any)} className={`px-3 py-1.5 rounded-full text-[12px] border ${mode===m?'bg-slate-900 text-white border-slate-900':'bg-white'}`}>{m}</button>))}
+          <div className="mt-3 flex gap-2">
+            {['Remote','Onsite'].map(m=>(<button key={m} onClick={()=>setMode(m as any)} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-full text-[12px] border transition-colors ${mode===m?'bg-slate-900 text-white border-slate-900':'bg-white text-slate-700'}`}>{m}</button>))}
           </div>
         </div>
-        <div className={`px-2.5 py-1 rounded-full text-[11px] border ${activeEntry?'bg-emerald-50 text-emerald-700 border-emerald-200':'bg-slate-50'}`}>{activeEntry?'● On Duty':'Off Duty'}</div>
+
+        {/* Status Badge */}
+        <div className={`self-start px-2.5 py-1 rounded-full text-[11px] border whitespace-nowrap ${activeEntry?'bg-emerald-50 text-emerald-700 border-emerald-200':'bg-slate-50 text-slate-600'}`}>
+          {activeEntry?'● On Duty':'Off Duty'}
+        </div>
       </div>      
+
+      {/* Action Button */}
       <div className="mt-4">
         {!activeEntry ? (
-          <button disabled={loading} onClick={clockIn} className="w-full h-11 rounded-xl bg-slate-900 text-white text-sm font-medium">{loading?'...':`Clock In • ${mode}`}</button>
+          <button disabled={loading} onClick={clockIn} className="w-full h-11 rounded-xl bg-slate-900 text-white text-sm font-medium active:scale-[0.99] transition-transform">{loading?'...':`Clock In • ${mode}`}</button>
         ) : (
-          <button disabled={loading} onClick={clockOut} className="w-full h-11 rounded-xl bg-white border border-slate-900 text-sm font-medium">{loading?'...':`Clock Out • ${new Date(activeEntry.clock_in).toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'})}`}</button>
+          <button disabled={loading} onClick={clockOut} className="w-full h-11 rounded-xl bg-white border border-slate-900 text-sm font-medium active:scale-[0.99] transition-transform">{loading?'...':`Clock Out • ${new Date(activeEntry.clock_in).toLocaleTimeString('en-PH',{timeZone:'Asia/Manila'})}`}</button>
         )}
       </div>
     </div>
