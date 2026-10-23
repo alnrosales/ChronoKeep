@@ -49,10 +49,10 @@ export default async function AdminPage() {
             <div className="rounded-2xl bg-white border p-4 hover:border-slate-900 hover:shadow-md cursor-pointer transition-all">
               <div className="text- text-slate-500">Employees • Click to manage</div>
               <div className="text- font-bold">{activeEmployees?.length || 0} / {employees?.length || 0}</div>
-              <div className="text- text-slate-400 mt-1">Active / Total • Click to view</div>
+              <div className="text- text-slate-400 mt-1">Active / Total</div>
             </div>
           } />
-          <div className="rounded-2xl bg-white border p-4"><div className="text- text-slate-500">Present Today (PHT)</div><div className="text- font-bold">{presentToday}</div></div>
+          <div className="rounded-2xl bg-white border p-4"><div className="text- text-slate-500">Present Today</div><div className="text- font-bold">{presentToday}</div></div>
           <div className="rounded-2xl bg-white border p-4"><div className="text- text-slate-500">Shifts Today</div><div className="text- font-bold">{todayEntries.length}</div></div>
           <div className="rounded-2xl bg-white border p-4"><div className="text- text-slate-500">Total Records</div><div className="text- font-bold">{entries?.length || 0}</div></div>
         </div>

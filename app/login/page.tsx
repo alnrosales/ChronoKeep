@@ -1,26 +1,100 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { Bricolage_Grotesque } from 'next/font/google'
+
+const display = Bricolage_Grotesque({ subsets: ['latin'], weight: ['500', '700', '800'] })
+
+const ZONES = [
+  { label: 'Manila', tz: 'Asia/Manila' },
+  { label: 'Sydney', tz: 'Australia/Sydney' },
+  { label: 'London', tz: 'Europe/London' },
+]
+
+function zoneTime(ms: number, tz: string) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date(ms))
+  const h = parts.find(p => p.type === 'hour')?.value ?? '00'
+  const m = parts.find(p => p.type === 'minute')?.value ?? '00'
+  const hourNum = parseInt(h, 10) % 24
+  return { text: `${h}:${m}`, daytime: hourNum >= 6 && hourNum < 18 }
+}
+
+function LiveClock({ now, className = '' }: { now: number | null; className?: string }) {
+  const d = new Date(now ?? 0)
+  const secAngle = now === null ? 0 : (now / 1000) * 6 // unbounded so the hand never spins backwards
+  const minAngle = now === null ? 0 : d.getMinutes() * 6 + d.getSeconds() * 0.1
+  const hourAngle = now === null ? 0 : (d.getHours() % 12) * 30 + d.getMinutes() * 0.5
+  const progress = now === null ? 0 : d.getSeconds() / 60
+  const C = 2 * Math.PI * 92
+
+  const origin = { transformOrigin: '100px 100px' } as const
+
+  return (
+    <svg viewBox="0 0 200 200" className={className} role="img" aria-label="Live analog clock">
+      <circle cx="100" cy="100" r="98" fill="#ffffff" fillOpacity="0.12" />
+      <circle cx="100" cy="100" r="92" fill="none" stroke="#ffffff" strokeOpacity="0.18" strokeWidth="5" />
+      <circle
+        cx="100" cy="100" r="92" fill="none" stroke="#FFC83D" strokeWidth="5" strokeLinecap="round"
+        strokeDasharray={C} strokeDashoffset={C * (1 - progress)}
+        transform="rotate(-90 100 100)"
+      />
+      {Array.from({ length: 60 }).map((_, i) => {
+        const major = i % 5 === 0
+        return (
+          <line
+            key={i} x1="100" y1={major ? 17 : 19} x2="100" y2={major ? 29 : 24}
+            stroke="#ffffff" strokeOpacity={major ? 0.95 : 0.4} strokeWidth={major ? 2.5 : 1}
+            strokeLinecap="round" transform={`rotate(${i * 6} 100 100)`}
+          />
+        )
+      })}
+      <g style={{ ...origin, transform: `rotate(${hourAngle}deg)` }}>
+        <line x1="100" y1="108" x2="100" y2="58" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" />
+      </g>
+      <g style={{ ...origin, transform: `rotate(${minAngle}deg)` }}>
+        <line x1="100" y1="110" x2="100" y2="36" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+      </g>
+      <g
+        className="motion-reduce:transition-none"
+        style={{ ...origin, transform: `rotate(${secAngle}deg)`, transition: 'transform 0.3s cubic-bezier(.4,2.1,.6,.9)' }}
+      >
+        <line x1="100" y1="118" x2="100" y2="28" stroke="#FF5A4E" strokeWidth="2" strokeLinecap="round" />
+      </g>
+      <circle cx="100" cy="100" r="6" fill="#FF5A4E" />
+      <circle cx="100" cy="100" r="2.5" fill="#ffffff" />
+    </svg>
+  )
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [now, setNow] = useState<number | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true); setError('')
-    
+
     // 1. Authenticate user credentials
     const { error, data } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { 
+    if (error) {
       setError(error.message)
-      setLoading(false) 
-      return 
+      setLoading(false)
+      return
     }
 
     const user = data.user
@@ -71,76 +145,124 @@ export default function LoginPage() {
     setLoading(false)
   }
 
+  const bigTime = now === null ? '--:--' : zoneTime(now, Intl.DateTimeFormat().resolvedOptions().timeZone).text
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[var(--bg)]">
-      <div className="w-full max-w-[960px] grid lg:grid-cols-[1.1fr_0.9fr] gap-6 items-center">
-        
-        {/* Left Branding Panel: Hidden on mobile, beautiful card on desktop */}
-        <div className="hidden lg:flex flex-col justify-between rounded-[24px] bg-white border p-8 shadow-lg h-[460px]">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-900 text-white grid place-items-center font-bold">C</div>
-              <div className="font-semibold text-lg">ChronoKeep</div>
-              <span className="text-[11px] px-2 py-1 rounded-full bg-indigo-50 text-indigo-600">Version 5</span>
-            </div>
-            <h1 className="mt-12 text-[36px] font-bold leading-[1.1]">Timekeeper for distributed teams.</h1>
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[#EEEAFF]">
+      <div className="w-full max-w-[1040px] grid lg:grid-cols-[1.1fr_0.9fr] rounded-[32px] overflow-hidden shadow-[0_30px_80px_-20px_rgba(60,30,200,0.45)] bg-white">
+
+        {/* Left: live clock panel (desktop) */}
+        <div className="hidden lg:flex relative flex-col justify-between bg-[#4B2BF0] text-white p-10 min-h-[600px] overflow-hidden">
+          {/* big offset clock face as a backdrop shape */}
+          <div className="absolute -right-32 -bottom-32 w-[420px] h-[420px] rounded-full bg-[#FF5A4E] opacity-90" aria-hidden />
+          <div className="absolute -left-20 -top-20 w-[220px] h-[220px] rounded-full bg-[#7A5CFF]" aria-hidden />
+
+          <div className="relative flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white text-[#4B2BF0] grid place-items-center font-extrabold">C</div>
+            <div className={`${display.className} font-bold text-xl`}>ChronoKeep</div>
+            <span className="text-[11px] px-2 py-1 rounded-full bg-white/20 font-medium">Version 5</span>
           </div>
-          <div className="text-[12px] text-slate-400">Built for Waho Solutions Inc.</div>
+
+          <div className="relative">
+            <LiveClock now={now} className="w-[250px] h-[250px] drop-shadow-[0_18px_30px_rgba(20,10,80,0.35)]" />
+            <div className={`${display.className} mt-6 text-[64px] font-extrabold leading-none tabular-nums`}>{bigTime}</div>
+            <h1 className={`${display.className} mt-4 text-[30px] font-bold leading-[1.1] max-w-[320px]`}>
+              Timekeeping for teams spread across the clock.
+            </h1>
+          </div>
+
+          <div className="relative">
+            <div className="flex gap-2.5">
+              {ZONES.map(z => {
+                const t = now === null ? null : zoneTime(now, z.tz)
+                return (
+                  <div key={z.tz} className="flex-1 rounded-2xl bg-white/15 backdrop-blur px-3 py-2.5">
+                    <div className="flex items-center gap-1.5 text-[12px] text-white/80">
+                      <span className={`w-2 h-2 rounded-full ${t?.daytime ? 'bg-[#FFC83D]' : 'bg-[#B9A8FF]'}`} />
+                      {z.label}
+                    </div>
+                    <div className="mt-0.5 font-semibold text-[17px] tabular-nums">{t?.text ?? '--:--'}</div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="mt-5 text-[12px] text-white/70">Built for Waho Solutions Inc. by Alistair Rosales</div>
+          </div>
         </div>
 
-        {/* Right Form Card */}
-        <div className="w-full rounded-[24px] bg-white border p-6 sm:p-8 shadow-lg">
-          
-          {/* Mobile-only Branding Header: Shows logo nicely on phones before the sign-in box */}
-          <div className="flex lg:hidden items-center justify-between mb-6 pb-4 border-b">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white grid place-items-center font-bold text-sm">C</div>
-              <span className="font-semibold text-base">ChronoKeep</span>
+        {/* Right: form */}
+        <div className="w-full p-6 sm:p-10 flex flex-col justify-center">
+
+          {/* Mobile-only branding header with a compact live clock */}
+          <div className="flex lg:hidden items-center justify-between mb-8 rounded-2xl bg-[#4B2BF0] text-white p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-white text-[#4B2BF0] grid place-items-center font-extrabold text-sm">C</div>
+              <div>
+                <div className={`${display.className} font-bold text-base leading-tight`}>ChronoKeep</div>
+                <div className="text-[12px] text-white/75 tabular-nums">{bigTime} local · v5</div>
+              </div>
             </div>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-medium">v5</span>
+            <LiveClock now={now} className="w-14 h-14" />
           </div>
 
-          <h2 className="text-[20px] sm:text-[22px] font-semibold">Sign in</h2>
-          <p className="mt-1 text-[13px] text-slate-500">Enter your credentials to access your account.</p>
-          
-          <form onSubmit={handleLogin} className="mt-6 space-y-4">
+          <h2 className={`${display.className} text-[28px] sm:text-[32px] font-extrabold text-[#14102B] leading-tight`}>Welcome back</h2>
+          <p className="mt-1.5 text-[14px] text-slate-500">Sign in to clock in, review your hours and manage your team.</p>
+
+          <form onSubmit={handleLogin} className="mt-8 space-y-5">
             <div>
-              <label className="text-[12px] font-medium text-slate-600">Email</label>
-              <input 
+              <label htmlFor="email" className="text-[13px] font-semibold text-[#14102B]">Email</label>
+              <input
+                id="email"
                 type="email"
                 autoComplete="email"
-                value={email} 
-                onChange={e=>setEmail(e.target.value)} 
-                className="mt-1 w-full h-11 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" 
-                placeholder="name@waho.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="mt-1.5 w-full h-12 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-4 text-sm text-[#14102B] placeholder:text-slate-400 transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15"
+                placeholder="name@waho.com.au"
                 required
               />
             </div>
             <div>
-              <label className="text-[12px] font-medium text-slate-600">Password</label>
-              <input 
-                type="password" 
-                autoComplete="current-password"
-                value={password} 
-                onChange={e=>setPassword(e.target.value)} 
-                className="mt-1 w-full h-11 rounded-xl border border-slate-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900" 
-                placeholder="••••••••"
-                required
-              />
+              <label htmlFor="password" className="text-[13px] font-semibold text-[#14102B]">Password</label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="mt-1.5 w-full h-12 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] pl-4 pr-16 text-sm text-[#14102B] placeholder:text-slate-400 transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(s => !s)}
+                  className="absolute right-3 top-[calc(50%+3px)] -translate-y-1/2 text-[12px] font-semibold text-[#4B2BF0] hover:text-[#2f16b8] rounded-md px-1.5 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B2BF0]"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
-            
-            {error && <div className="text-[12px] text-red-600 bg-red-50 border border-red-200 p-2.5 rounded-xl">{error}</div>}
-            
-            <button 
-              disabled={loading} 
-              className="w-full h-11 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-black active:scale-[0.99] transition-transform disabled:opacity-50"
+
+            {error && (
+              <div role="alert" className="text-[13px] text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] p-3 rounded-2xl">
+                {error}
+              </div>
+            )}
+
+            <button
+              disabled={loading}
+              className="group w-full h-12 rounded-2xl bg-[#FF5A4E] text-white text-[15px] font-bold shadow-[0_10px_24px_-8px_rgba(255,90,78,0.7)] hover:bg-[#F2443A] active:scale-[0.99] transition disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-[#FF5A4E]/30"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
-          <div className="mt-6 text-center lg:text-left text-[11px] text-slate-400">
-            Waho Solutions Inc. • Secure Portal
+          <div className="mt-8 flex items-center gap-2 justify-center lg:justify-start text-[12px] text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-[#2EE6A6]" aria-hidden />
+            Waho Solutions Inc. secure portal
           </div>
         </div>
 
