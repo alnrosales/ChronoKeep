@@ -127,7 +127,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative bg-white w-full max-w-6xl max-h- overflow-hidden shadow-2xl flex flex-col rounded-3xl">
+          <div className="relative bg-white w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col rounded-3xl">
             <div className="p-5 border-b flex justify-between items-center">
               <div className="font-semibold">Employees • {list.length}</div>
               <div className="flex gap-2">
@@ -190,20 +190,44 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       {showAddModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
-          <div className="relative bg-white w-full max-w- shadow-2xl p-7 rounded-3xl">
+          <div className="relative bg-white w-full max-w-md shadow-2xl p-7 rounded-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-5">
               <h2 className="text-lg font-semibold">Add Employee</h2>
-              <button onClick={() => setShowAddModal(false)} className="h-8 w-8 rounded-full bg-slate-100">✕</button>
+              <button onClick={() => setShowAddModal(false)} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">✕</button>
             </div>
-            <div className="grid gap-3">
-              <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Full name *" className="h-11 rounded-full border px-4 text-sm" />
-              <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email *" className="h-11 rounded-full border px-4 text-sm" />
-              <div className="grid grid-cols-2 gap-3">
-                <input type="time" value={form.shift_start} onChange={(e) => setForm({ ...form, shift_start: e.target.value })} className="h-11 rounded-full border px-4 text-sm" />
-                <input type="time" value={form.shift_ends} onChange={(e) => setForm({ ...form, shift_ends: e.target.value })} className="h-11 rounded-full border px-4 text-sm" />
+            
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Full Name *</label>
+                <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Full name" className="w-full h-11 rounded-full border px-4 text-sm" />
               </div>
-              <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Department" className="h-11 rounded-full border px-4 text-sm" />
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Email *</label>
+                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email address" className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Password *</label>
+                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password" className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Start</label>
+                <input type="time" value={form.shift_start} onChange={(e) => setForm({ ...form, shift_start: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Ends</label>
+                <input type="time" value={form.shift_ends} onChange={(e) => setForm({ ...form, shift_ends: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Department</label>
+                <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Department" className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
             </div>
+
             <div className="flex gap-3 mt-6">
               <button onClick={() => setShowAddModal(false)} className="flex-1 h-11 rounded-full border text-sm">Cancel</button>
               <button disabled={loading} onClick={handleAdd} className="flex-1 h-11 rounded-full bg-slate-900 text-white text-sm">{loading ? 'Creating...' : 'Create'}</button>
