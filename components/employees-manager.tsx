@@ -20,6 +20,12 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   const [list, setList] = useState<Employee[]>(employees)
   const [editing, setEditing] = useState<Employee | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  
+  // Summary modal states
+  const [summaryEmp, setSummaryEmp] = useState<Employee | null>(null)
+  const [workLogs, setWorkLogs] = useState<any[]>([])
+  const [loadingLogs, setLoadingLogs] = useState(false)
+
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -63,6 +69,29 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     }
   }
 
+  const handleOpenSummary = async (emp: Employee) => {
+    setSummaryEmp(emp)
+    setLoadingLogs(true)
+    try {
+      // Change 'time_logs' to your actual attendance/time records table name if different
+      const { data, error } = await supabase
+        .from('time_logs')
+        .select('*')
+        .eq('user_id', emp.id)
+        .order('created_at', { ascending: false })
+      
+      if (error) {
+        setWorkLogs([])
+      } else {
+        setWorkLogs(data || [])
+      }
+    } catch (err) {
+      setWorkLogs([])
+    } finally {
+      setLoadingLogs(false)
+    }
+  }
+
   const handleAdd = async () => {
     if (!form.email || !form.full_name) {
       alert('Name and email required')
@@ -76,14 +105,12 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     setLoading(true)
 
     // Create a temporary client that does NOT persist session 
-    // This prevents the new user signup from logging out the current admin
     const tempSupabase = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       { auth: { persistSession: false, autoRefreshToken: false } }
     )
 
-    // 1. Register user via Supabase Auth using the temporary client
     const { data, error } = await tempSupabase.auth.signUp({
       email: form.email,
       password: form.password,
@@ -112,7 +139,6 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       return
     }
 
-    // 2. Upsert profile with the valid Auth user ID using the main client
     const { error: profileError } = await supabase.from('profiles').upsert({
       id: user.id,
       email: form.email,
@@ -253,6 +279,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                           <td className="p-3">{emp.department || '-'}</td>
                           <td className="p-3">{emp.is_active ? 'Yes' : 'No'}</td>
                           <td className="p-3 flex gap-1">
+                            <button onClick={() => handleOpenSummary(emp)} className="px-3 py-1 rounded-full border text-xs bg-slate-50 hover:bg-slate-100">Summary</button>
                             <button onClick={() => setEditing(emp)} className="px-3 py-1 rounded-full border text-xs">Edit</button>
                             <button disabled={loading} onClick={() => handleDelete(emp.id)} className="px-3 py-1 rounded-full bg-red-50 text-red-600 border text-xs">Delete</button>
                           </td>
@@ -262,6 +289,58 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Modal Window */}
+      {summaryEmp && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSummaryEmp(null)} />
+          <div className="relative bg-white w-full max-w-3xl shadow-2xl p-7 rounded-3xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex justify-between items-start mb-5 pb-3 border-b">
+              <div>
+                <h2 className="text-lg font-semibold">{summaryEmp.full_name}&apos;s Working Records</h2>
+                <p className="text-xs text-slate-500">{summaryEmp.email} • {summaryEmp.department || 'No Dept'} • {summaryEmp.work_type}</p>
+              </div>
+              <button onClick={() => setSummaryEmp(null)} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">✕</button>
+            </div>
+            
+            <div className="overflow-y-auto flex-1">
+              {loadingLogs ? (
+                <div className="py-12 text-center text-sm text-slate-500">Loading records...</div>
+              ) : workLogs.length === 0 ? (
+                <div className="py-12 text-center text-sm text-slate-500">
+                  No working records found for this employee.
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-slate-50 border-b text-xs text-slate-500">
+                    <tr>
+                      <th className="text-left p-3">Date / Timestamp</th>
+                      <th className="text-left p-3">Clock In</th>
+                      <th className="text-left p-3">Clock Out</th>
+                      <th className="text-left p-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workLogs.map((log, idx) => (
+                      <tr key={idx} className="border-b hover:bg-slate-50">
+                        <td className="p-3 text-xs text-slate-600">{new Date(log.created_at || log.date).toLocaleString()}</td>
+                        <td className="p-3 font-mono">{log.clock_in || log.start_time || '-'}</td>
+                        <td className="p-3 font-mono">{log.clock_out || log.end_time || '-'}</td>
+                        <td className="p-3"><span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-700">{log.status || 'Completed'}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mt-5 pt-3 border-t flex justify-between items-center text-xs text-slate-500">
+              <div>Total Records Found: {workLogs.length}</div>
+              <button onClick={() => setSummaryEmp(null)} className="px-5 py-2 rounded-full border bg-white text-sm">Close</button>
             </div>
           </div>
         </div>
