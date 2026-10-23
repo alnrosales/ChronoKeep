@@ -10,8 +10,33 @@ export default async function EmployeePage() {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
   const { data: settings } = await supabase.from('company_settings').select('*').limit(1).single()
   const today = new Date().toISOString().split('T')[0]
-  const { data: todayEntry } = await supabase.from('time_entries').select('*').eq('employee_id', user.id).eq('date', today).maybeSingle()
-  const { data: history } = await supabase.from('time_entries').select('*').eq('employee_id', user.id).order('date', { ascending: false }).limit(30)
+
+  // Fetch latest OPEN entry (clock_out is null) - allows multiple per day
+  const { data: openEntry } = await supabase
+    .from('time_entries')
+    .select('*')
+    .eq('employee_id', user.id)
+    .is('clock_out', null)
+    .order('clock_in', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  // For display, also get today's latest entry (for fallback)
+  const { data: todayEntry } = await supabase
+    .from('time_entries')
+    .select('*')
+    .eq('employee_id', user.id)
+    .eq('date', today)
+    .order('clock_in', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { data: history } = await supabase
+    .from('time_entries')
+    .select('*')
+    .eq('employee_id', user.id)
+    .order('clock_in', { ascending: false })
+    .limit(30)
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-4 sm:p-6">
@@ -19,22 +44,23 @@ export default async function EmployeePage() {
         <header className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-slate-900 text-white grid place-items-center font-bold">C</div>
-            <div><div className="font-semibold">ChronoKeep</div><div className="text-[11px] text-slate-500">Employee • {profile?.full_name}</div></div>
+            <div><div className="font-semibold">ChronoKeep</div><div className="text-[11px] text-slate-500">Employee • {profile?.full_name} • Flexible Shifts</div></div>
           </div>
           <form action="/auth/signout" method="post"><button className="text-[13px] px-3 py-1.5 rounded-full border bg-white">Sign out</button></form>
         </header>
 
         <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-6">
-          <ClockCard profile={profile} todayEntry={todayEntry} settings={settings || { start_time: '09:00', grace_minutes: 15 }} />
+          <ClockCard profile={profile} todayEntry={todayEntry} openEntry={openEntry} settings={settings || { start_time: '09:00', grace_minutes: 15 }} />
           <div className="rounded-[20px] bg-white border shadow-sm p-6">
-            <div className="font-medium">My history (30 days)</div>
-            <div className="mt-4 space-y-2 max-h-[420px] overflow-auto pr-1">
+            <div className="font-medium">My history (30 shifts) - flexible</div>
+            <div className="mt-4 space-y-2 max-h-[500px] overflow-auto pr-1">
               {history?.map((e: any) => (
                 <div key={e.id} className="flex justify-between items-center text-[12px] p-2.5 rounded-xl border bg-slate-50">
-                  <div><div className="font-medium">{e.date}</div><div className="text-[11px] text-slate-500">{e.mode} • {e.status} {e.is_edited ? '• Edited' : ''}</div></div>
-                  <div className="text-right mono"><div>{e.clock_in ? new Date(e.clock_in).toLocaleTimeString() : '—'} → {e.clock_out ? new Date(e.clock_out).toLocaleTimeString() : '—'}</div><div className="text-[11px] text-slate-500">{e.late_reason_type || ''}</div></div>
+                  <div><div className="font-medium">{e.date} • {new Date(e.clock_in).toLocaleTimeString()}</div><div className="text-[11px] text-slate-500">{e.mode} • {e.status} {e.is_edited ? '• Edited' : ''} {e.clock_out ? '' : '• ONGOING'}</div></div>
+                  <div className="text-right mono"><div>{e.clock_in ? new Date(e.clock_in).toLocaleTimeString() : '—'} → {e.clock_out ? new Date(e.clock_out).toLocaleTimeString() : '...'}</div><div className="text-[11px] text-slate-500">{e.late_reason_type || ''}</div></div>
                 </div>
               ))}
+              {(!history || history.length===0) && <div className="text-[12px] text-slate-400">No shifts yet. Clock in anytime.</div>}
             </div>
           </div>
         </div>
