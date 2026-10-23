@@ -39,11 +39,62 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
 
+  // Helper to format date as dd-mmm-yy in UTC+8
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-'
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return dateStr
+      // Shift to UTC+8
+      const utc8Date = new Date(d.getTime() + (8 * 60 - d.getTimezoneOffset()) * 60000)
+      const day = String(utc8Date.getUTCDate()).padStart(2, '0')
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      const month = months[utc8Date.getUTCMonth()]
+      const year = String(utc8Date.getUTCFullYear()).slice(-2)
+      return `${day}-${month}-${year}`
+    } catch {
+      return dateStr
+    }
+  }
+
+  // Helper to format time to 12-hour format in UTC+8
+  const formatTime12hr = (timeStr: string) => {
+    if (!timeStr) return '-'
+    try {
+      let hours = 0, minutes = 0
+      if (timeStr.includes('T')) {
+        const d = new Date(timeStr)
+        if (!isNaN(d.getTime())) {
+          const utc8Date = new Date(d.getTime() + (8 * 60 - d.getTimezoneOffset()) * 60000)
+          hours = utc8Date.getUTCHours()
+          minutes = utc8Date.getUTCMinutes()
+        } else {
+          return timeStr
+        }
+      } else {
+        const parts = timeStr.split(':')
+        if (parts.length >= 2) {
+          hours = parseInt(parts[0], 10)
+          minutes = parseInt(parts[1], 10)
+        } else {
+          return timeStr
+        }
+      }
+      
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      hours = hours % 12
+      hours = hours ? hours : 12 // the hour '0' should be '12'
+      const minStr = String(minutes).padStart(2, '0')
+      return `${hours}:${minStr} ${ampm}`
+    } catch {
+      return timeStr
+    }
+  }
+
   // Helper function to calculate working hours between clock_in and clock_out
   const calculateHours = (clockIn: string, clockOut: string) => {
     if (!clockIn || !clockOut) return '-'
     try {
-      // Handles standard "HH:mm" time strings or full timestamps
       const start = clockIn.includes('T') ? new Date(clockIn) : new Date(`1970-01-01T${clockIn}`)
       const end = clockOut.includes('T') ? new Date(clockOut) : new Date(`1970-01-01T${clockOut}`)
       
@@ -342,7 +393,6 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-slate-50 border-b text-xs text-slate-500">
                     <tr>
-                      <th className="text-left p-3">Date</th>
                       <th className="text-left p-3">Clock In</th>
                       <th className="text-left p-3">Clock Out</th>
                       <th className="text-left p-3">Total Hours</th>
@@ -351,9 +401,9 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                   <tbody>
                     {workLogs.map((log, idx) => (
                       <tr key={log.id || idx} className="border-b hover:bg-slate-50">
-                        <td className="p-3 text-xs text-slate-600">{log.date || '-'}</td>
-                        <td className="p-3 font-mono">{log.clock_in || '-'}</td>
-                        <td className="p-3 font-mono">{log.clock_out || '-'}</td>
+                        <td className="p-3 text-xs text-slate-600">{formatDate(log.date)}</td>
+                        <td className="p-3 font-mono">{formatTime12hr(log.clock_in)}</td>
+                        <td className="p-3 font-mono">{formatTime12hr(log.clock_out)}</td>
                         <td className="p-3 font-semibold text-indigo-600">{calculateHours(log.clock_in, log.clock_out)}</td>
                       </tr>
                     ))}
@@ -405,32 +455,3 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                   <option value="Hybrid">Hybrid</option>
                   <option value="Remote">Remote</option>
                   <option value="Onsite">Onsite</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Start</label>
-                <input type="time" value={form.shift_start} onChange={(e) => setForm({ ...form, shift_start: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Ends</label>
-                <input type="time" value={form.shift_ends} onChange={(e) => setForm({ ...form, shift_ends: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Department</label>
-                <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Department" className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowAddModal(false)} className="flex-1 h-11 rounded-full border text-sm">Cancel</button>
-              <button disabled={loading} onClick={handleAdd} className="flex-1 h-11 rounded-full bg-slate-900 text-white text-sm">{loading ? 'Creating...' : 'Create'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  )
-}
