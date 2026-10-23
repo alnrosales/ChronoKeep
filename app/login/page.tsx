@@ -24,7 +24,6 @@ function zoneTime(ms: number, tz: string) {
 
 function LiveClock({ now, className = '' }: { now: number | null; className?: string }) {
   const d = new Date(now ?? 0)
-  const secAngle = now === null ? 0 : (now / 1000) * 6 // unbounded so the hand never spins backwards
   const minAngle = now === null ? 0 : d.getMinutes() * 6 + d.getSeconds() * 0.1
   const hourAngle = now === null ? 0 : (d.getHours() % 12) * 30 + d.getMinutes() * 0.5
   const progress = now === null ? 0 : d.getSeconds() / 60
@@ -56,12 +55,6 @@ function LiveClock({ now, className = '' }: { now: number | null; className?: st
       </g>
       <g style={{ ...origin, transform: `rotate(${minAngle}deg)` }}>
         <line x1="100" y1="110" x2="100" y2="36" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
-      </g>
-      <g
-        className="motion-reduce:transition-none"
-        style={{ ...origin, transform: `rotate(${secAngle}deg)`, transition: 'transform 0.3s cubic-bezier(.4,2.1,.6,.9)' }}
-      >
-        <line x1="100" y1="118" x2="100" y2="28" stroke="#FF5A4E" strokeWidth="2" strokeLinecap="round" />
       </g>
       <circle cx="100" cy="100" r="6" fill="#FF5A4E" />
       <circle cx="100" cy="100" r="2.5" fill="#ffffff" />
