@@ -280,7 +280,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative bg-white w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col rounded-3xl">
+          <div className="relative bg-white w-full max-w-[96vw] max-h-[90vh] overflow-hidden shadow-2xl flex flex-col rounded-3xl">
             <div className="p-5 border-b flex justify-between items-center">
               <div className="font-semibold">Employees • {list.length}</div>
               <div className="flex gap-2">
@@ -306,18 +306,18 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
               </div>
             </div>
             <div className="overflow-auto flex-1">
-              <table className="w-full min-w-[1000px] table-fixed text-sm">
+              <table className="w-full table-fixed text-sm">
                 <thead className="sticky top-0 bg-slate-50 border-b text-xs text-slate-500">
                   <tr>
-                    <th className="text-left p-3 w-44">Full Name</th>
-                    <th className="text-left p-3 w-56">Email</th>
-                    <th className="text-left p-3 w-28">Role</th>
-                    <th className="text-left p-3 w-28">Work Type</th>
-                    <th className="text-left p-3 w-32">Shift Start</th>
-                    <th className="text-left p-3 w-32">Shift Ends</th>
-                    <th className="text-left p-3 w-36">Department</th>
-                    <th className="text-left p-3 w-20">Active</th>
-                    <th className="text-left p-3 w-44">Actions</th>
+                    <th className="text-left p-3 w-[15%]">Full Name</th>
+                    <th className="text-left p-3 w-[18%]">Email</th>
+                    <th className="text-left p-3 w-[8%]">Role</th>
+                    <th className="text-left p-3 w-[10%]">Work Type</th>
+                    <th className="text-left p-3 w-[10%]">Shift Start</th>
+                    <th className="text-left p-3 w-[10%]">Shift Ends</th>
+                    <th className="text-left p-3 w-[11%]">Department</th>
+                    <th className="text-left p-3 w-[6%]">Active</th>
+                    <th className="text-left p-3 w-[12%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
