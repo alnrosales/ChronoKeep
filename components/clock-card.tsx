@@ -57,17 +57,14 @@ export default function ClockCard({ profile, todayEntry, settings, openEntry }: 
 
   return (
     <div className="rounded-[20px] bg-white border shadow-sm p-4 sm:p-6">
-      {/* Top Section: Stacks on mobile, side-by-side on larger screens */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
         <div className="w-full">
           <div className="text-[11px] text-slate-500 tracking-wide">CURRENT TIME • {mode} MODE</div>
           
-          {/* Responsive clock size: slightly smaller on mobile so it doesn't wrap awkwardly */}
           <div className="mt-1 text-[30px] sm:text-[36px] font-bold mono tracking-tight">{getManilaTimeString(now)}</div>
           
           <div className="text-[11px] text-slate-400">Philippines Time • Asia/Manila • UTC+8</div>
           
-          {/* Fixed typo from shift_start to shift_starts & made line mobile-friendly */}
           <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">
             Shift: <span className="font-medium text-slate-600">{formatTo12Hour(shift_start)}</span> – <span className="font-medium text-slate-600">{formatTo12Hour(shift_ends)}</span>
           </div>
@@ -83,7 +80,6 @@ export default function ClockCard({ profile, todayEntry, settings, openEntry }: 
         </div>
       </div>      
 
-      {/* Action Button */}
       <div className="mt-4">
         {!activeEntry ? (
           <button disabled={loading} onClick={clockIn} className="w-full h-11 rounded-xl bg-slate-900 text-white text-sm font-medium active:scale-[0.99] transition-transform">{loading?'...':`Clock In • ${mode}`}</button>
