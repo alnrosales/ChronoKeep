@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 type Employee = {
   id: string
@@ -33,22 +34,32 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   const [loading, setLoading] = useState(false)
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete employee completely from Auth and database?')) return
+    if (!confirm('Are you sure you want to delete this employee?')) return
     
     setLoading(true)
-    const response = await fetch('/api/delete-employee', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: id })
-    })
+    try {
+      const response = await fetch('/api/delete-employee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id })
+      })
 
-    const result = await response.json()
-    setLoading(false)
+      const result = await response.json()
 
-    if (!response.ok) {
-      alert(result.error || 'Failed to delete user')
-    } else {
-      setList((prev) => prev.filter((e) => e.id !== id))
+      if (!response.ok) {
+        const { error: dbError } = await supabase.from('profiles').delete().eq('id', id)
+        if (dbError) {
+          alert(`Failed to delete: ${dbError.message}`)
+        } else {
+          setList((prev) => prev.filter((e) => e.id !== id))
+        }
+      } else {
+        setList((prev) => prev.filter((e) => e.id !== id))
+      }
+    } catch (err: any) {
+      alert(`Delete error: ${err.message}`)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -64,8 +75,16 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
 
     setLoading(true)
 
-    // 1. Register user via Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
+    // Create a temporary client that does NOT persist session 
+    // This prevents the new user signup from logging out the current admin
+    const tempSupabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    )
+
+    // 1. Register user via Supabase Auth using the temporary client
+    const { data, error } = await tempSupabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: { 
@@ -76,7 +95,6 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       }
     })
 
-    // 2. Stop if Auth fails (avoids FK constraint error on profiles)
     if (error) {
       if (error.message.includes('already registered')) {
         alert('This email is already registered in Supabase Auth. Please delete the user from Supabase Authentication -> Users table first, or use a different email.')
@@ -94,7 +112,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       return
     }
 
-    // 3. Upsert profile with the valid Auth user ID
+    // 2. Upsert profile with the valid Auth user ID using the main client
     const { error: profileError } = await supabase.from('profiles').upsert({
       id: user.id,
       email: form.email,
