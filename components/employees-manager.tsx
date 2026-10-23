@@ -39,6 +39,24 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
 
+  // Helper function to calculate working hours between clock_in and clock_out
+  const calculateHours = (clockIn: string, clockOut: string) => {
+    if (!clockIn || !clockOut) return '-'
+    try {
+      // Handles standard "HH:mm" time strings or full timestamps
+      const start = clockIn.includes('T') ? new Date(clockIn) : new Date(`1970-01-01T${clockIn}`)
+      const end = clockOut.includes('T') ? new Date(clockOut) : new Date(`1970-01-01T${clockOut}`)
+      
+      const diffMs = end.getTime() - start.getTime()
+      if (isNaN(diffMs) || diffMs < 0) return '-'
+
+      const diffHrs = diffMs / (1000 * 60 * 60)
+      return `${diffHrs.toFixed(2)} hrs`
+    } catch {
+      return '-'
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this employee?')) return
     
@@ -76,8 +94,8 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       const { data, error } = await supabase
         .from('time_entries')
         .select('*')
-        .eq('user_id', emp.id)
-        .order('created_at', { ascending: false })
+        .eq('employee_id', emp.id)
+        .order('date', { ascending: false })
       
       if (error) {
         setWorkLogs([])
@@ -324,19 +342,19 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-slate-50 border-b text-xs text-slate-500">
                     <tr>
-                      <th className="text-left p-3">Date / Timestamp</th>
+                      <th className="text-left p-3">Date</th>
                       <th className="text-left p-3">Clock In</th>
                       <th className="text-left p-3">Clock Out</th>
-                      <th className="text-left p-3">Status</th>
+                      <th className="text-left p-3">Total Hours</th>
                     </tr>
                   </thead>
                   <tbody>
                     {workLogs.map((log, idx) => (
-                      <tr key={idx} className="border-b hover:bg-slate-50">
-                        <td className="p-3 text-xs text-slate-600">{new Date(log.created_at || log.date).toLocaleString()}</td>
-                        <td className="p-3 font-mono">{log.clock_in || log.start_time || '-'}</td>
-                        <td className="p-3 font-mono">{log.clock_out || log.end_time || '-'}</td>
-                        <td className="p-3"><span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-700">{log.status || 'Completed'}</span></td>
+                      <tr key={log.id || idx} className="border-b hover:bg-slate-50">
+                        <td className="p-3 text-xs text-slate-600">{log.date || '-'}</td>
+                        <td className="p-3 font-mono">{log.clock_in || '-'}</td>
+                        <td className="p-3 font-mono">{log.clock_out || '-'}</td>
+                        <td className="p-3 font-semibold text-indigo-600">{calculateHours(log.clock_in, log.clock_out)}</td>
                       </tr>
                     ))}
                   </tbody>
