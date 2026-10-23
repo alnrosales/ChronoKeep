@@ -52,7 +52,7 @@ create table public.time_entries (
   is_edited boolean default false,
   last_modified_at timestamptz,
   last_modified_by uuid references public.profiles(id),
-  -- unique(employee_id, date) REMOVED for flexible multiple shifts per day
+  unique(employee_id, date)
 );
 create index idx_time_entries_employee_date on public.time_entries(employee_id, date desc);
 create index idx_time_entries_date on public.time_entries(date desc);
