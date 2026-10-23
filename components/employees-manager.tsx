@@ -329,4 +329,134 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                           <td className="p-2"><input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} className="w-full h-8 rounded-full border px-3 text-sm" /></td>
                           <td className="p-2"><select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })} className="h-8 rounded-full border px-2 text-sm"><option>employee</option><option>admin</option></select></td>
                           <td className="p-2"><select value={editing.work_type} onChange={(e) => setEditing({ ...editing, work_type: e.target.value })} className="h-8 rounded-full border px-2 text-sm"><option>Hybrid</option><option>Remote</option><option>Onsite</option></select></td>
-                          <td className="p-2"><input type="time" value={editing.shift_start || '09:00'} onChange={(e
+                          <td className="p-2"><input type="time" value={editing.shift_start || '09:00'} onChange={(e) => setEditing({ ...editing, shift_start: e.target.value })} className="h-8 rounded-full border px-2 text-sm" /></td>
+                          <td className="p-2"><input type="time" value={editing.shift_ends || '15:00'} onChange={(e) => setEditing({ ...editing, shift_ends: e.target.value })} className="h-8 rounded-full border px-2 text-sm" /></td>
+                          <td className="p-2"><input value={editing.department || ''} onChange={(e) => setEditing({ ...editing, department: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm" /></td>
+                          <td className="p-2"><input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} /></td>
+                          <td className="p-2 flex gap-1"><button onClick={handleEdit} className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs">Save</button><button onClick={() => setEditing(null)} className="px-3 py-1 rounded-full border text-xs">Cancel</button></td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="p-3 font-medium">
+                            <button 
+                              onClick={() => handleOpenSummary(emp)}
+                              className="text-left text-slate-900 hover:text-indigo-600 hover:underline cursor-pointer font-medium focus:outline-none"
+                              title="Click to view working records summary"
+                            >
+                              {emp.full_name}
+                            </button>
+                          </td>
+                          <td className="p-3">{emp.email}</td>
+                          <td className="p-3">{emp.role}</td>
+                          <td className="p-3">{emp.work_type}</td>
+                          <td className="p-3 font-mono">{emp.shift_start || '09:00'}</td>
+                          <td className="p-3 font-mono">{emp.shift_ends || '15:00'}</td>
+                          <td className="p-3">{emp.department || '-'}</td>
+                          <td className="p-3">{emp.is_active ? 'Yes' : 'No'}</td>
+                          <td className="p-3 flex gap-1">
+                            <button onClick={() => setEditing(emp)} className="px-3 py-1 rounded-full border text-xs">Edit</button>
+                            <button disabled={loading} onClick={() => handleDelete(emp.id)} className="px-3 py-1 rounded-full bg-red-50 text-red-600 border text-xs">Delete</button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Modal Window */}
+      {summaryEmp && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSummaryEmp(null)} />
+          <div className="relative bg-white w-full max-w-3xl shadow-2xl p-7 rounded-3xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex justify-between items-start mb-5 pb-3 border-b">
+              <div>
+                <h2 className="text-lg font-semibold">{summaryEmp.full_name}&apos;s Working Records</h2>
+                <p className="text-xs text-slate-500">{summaryEmp.email} • {summaryEmp.department || 'No Dept'} • {summaryEmp.work_type}</p>
+              </div>
+              <button onClick={() => setSummaryEmp(null)} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">✕</button>
+            </div>
+            
+            <div className="overflow-y-auto flex-1">
+              {loadingLogs ? (
+                <div className="py-12 text-center text-sm text-slate-500">Loading records...</div>
+              ) : workLogs.length === 0 ? (
+                <div className="py-12 text-center text-sm text-slate-500">
+                  No working records found for this employee.
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-slate-50 border-b text-xs text-slate-500">
+                    <tr>
+                      <th className="text-left p-3">Date (UTC+8)</th>
+                      <th className="text-left p-3">Clock In</th>
+                      <th className="text-left p-3">Clock Out</th>
+                      <th className="text-left p-3">Total Hours</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workLogs.map((log, idx) => (
+                      <tr key={log.id || idx} className="border-b hover:bg-slate-50">
+                        <td className="p-3 text-xs text-slate-600">{formatDate(log.date)}</td>
+                        <td className="p-3 font-mono">{formatTime12hr(log.clock_in)}</td>
+                        <td className="p-3 font-mono">{formatTime12hr(log.clock_out)}</td>
+                        <td className="p-3 font-semibold text-indigo-600">{calculateHours(log.clock_in, log.clock_out)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mt-5 pt-3 border-t flex justify-between items-center text-xs text-slate-500">
+              <div>Total Records Found: {workLogs.length}</div>
+              <button onClick={() => setSummaryEmp(null)} className="px-5 py-2 rounded-full border bg-white text-sm">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
+          <div className="relative bg-white w-full max-w-md shadow-2xl p-7 rounded-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-5">
+              <h2 className="text-lg font-semibold">Add Employee</h2>
+              <button onClick={() => setShowAddModal(false)} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">✕</button>
+            </div>
+            
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Full Name *</label>
+                <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Full name" className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Email *</label>
+                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email address" className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Password *</label>
+                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password" className="w-full h-11 rounded-full border px-4 text-sm" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Work Type</label>
+                <select 
+                  value={form.work_type} 
+                  onChange={(e) => setForm({ ...form, work_type: e.target.value })} 
+                  className="w-full h-11 rounded-full border px-4 text-sm bg-white"
+                >
+                  <option value="Hybrid">Hybrid</option>
+                  <option value="Remote">Remote</option>
+                  <option value="Onsite">Onsite</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Start
