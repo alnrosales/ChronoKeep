@@ -125,7 +125,7 @@ export default async function EmployeePage() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm sm:min-w-[190px]">
-              <div className="text-xs font-medium text-white/70">TODAY · MANILA TIME</div>
+              <div className="text-xs font-medium text-white/70">TODAY · DAVAO CITY TIME</div>
               <div className={`${display.className} mt-1 text-lg font-bold`}>
                 {new Date().toLocaleDateString('en-PH', {
                   timeZone: 'Asia/Manila',
@@ -329,7 +329,7 @@ export default async function EmployeePage() {
               )}
             </div>
             <div className="border-t border-[#EEEAFF] bg-[#FAF9FF] px-5 py-3 text-xs text-slate-500">
-              All times are displayed in Manila time (UTC+8).
+              All times are displayed in Davao City time (UTC+8).
             </div>
           </section>
         </div>

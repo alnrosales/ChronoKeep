@@ -2,6 +2,9 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { Bricolage_Grotesque } from 'next/font/google'
+
+const display = Bricolage_Grotesque({ subsets: ['latin'], weight: ['500', '700', '800'] })
 
 type Employee = {
   id: string
@@ -15,15 +18,67 @@ type Employee = {
   is_active: boolean
 }
 
+// ---- shared style tokens (match the login + admin pages) ----
+const fieldInput =
+  'w-full h-12 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-4 text-[16px] sm:text-sm text-[#14102B] placeholder:text-slate-400 transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15'
+const cellInput =
+  'w-full h-10 rounded-xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-2.5 text-[16px] md:text-[13px] text-[#14102B] focus:outline-none focus:border-[#4B2BF0] focus:bg-white'
+const btnPrimary =
+  'h-11 px-5 rounded-2xl bg-[#FF5A4E] text-white text-sm font-bold shadow-[0_10px_24px_-10px_rgba(255,90,78,0.7)] hover:bg-[#F2443A] active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-[#FF5A4E]/30'
+const btnGhost =
+  'h-11 px-5 rounded-2xl border-2 border-[#E4DFFA] bg-white text-[#4B2BF0] text-sm font-semibold hover:bg-[#F6F4FF] active:scale-[0.98] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20'
+const btnSmGhost =
+  'h-9 px-3.5 rounded-xl border-2 border-[#E4DFFA] bg-white text-[#4B2BF0] text-[12px] font-semibold hover:bg-[#F6F4FF] active:scale-[0.98] transition'
+const btnSmSave =
+  'h-9 px-3.5 rounded-xl bg-[#4B2BF0] text-white text-[12px] font-semibold hover:bg-[#3A1FD0] active:scale-[0.98] transition'
+const btnSmDanger =
+  'h-9 px-3.5 rounded-xl border-2 border-[#FFC9C2] bg-[#FFF1EF] text-[#B42318] text-[12px] font-semibold hover:bg-[#FFE1DD] active:scale-[0.98] transition disabled:opacity-60'
+const iconClose =
+  'h-10 w-10 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-sm font-bold hover:bg-[#E2DBFF] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20'
+
+const initials = (name?: string | null) =>
+  (name || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '?'
+
+function ActivePill({ active }: { active: boolean }) {
+  return active ? (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E3FBF2] text-[#0B7A55] px-2.5 py-1 text-[12px] font-semibold">
+      <span className="w-1.5 h-1.5 rounded-full bg-[#2EE6A6]" aria-hidden /> Active
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 text-slate-500 px-2.5 py-1 text-[12px] font-semibold">
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" aria-hidden /> Inactive
+    </span>
+  )
+}
+
+function Chip({ children, tone = 'violet' }: { children: React.ReactNode; tone?: 'violet' | 'amber' | 'plain' }) {
+  const tones = {
+    violet: 'bg-[#EEEAFF] text-[#4B2BF0]',
+    amber: 'bg-[#FFF4D6] text-[#8A5A00]',
+    plain: 'bg-slate-100 text-slate-600',
+  }
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold ${tones[tone]}`}>{children}</span>
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="block text-[13px] font-semibold text-[#14102B] mb-1.5">{label}</span>
+      {children}
+    </label>
+  )
+}
+
 export default function EmployeesManager({ employees, trigger }: { employees: Employee[], trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [list, setList] = useState<Employee[]>(employees)
   const [editing, setEditing] = useState<Employee | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
-  
+
   // Summary modal states
   const [summaryEmp, setSummaryEmp] = useState<Employee | null>(null)
   const [workLogs, setWorkLogs] = useState<any[]>([])
+  const [summaryMonth, setSummaryMonth] = useState<string>('all')
   const [loadingLogs, setLoadingLogs] = useState(false)
 
   const [form, setForm] = useState({
@@ -39,56 +94,75 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
 
-  // Helper to format date as dd-mmm-yy in UTC+8
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-'
-    try {
-      const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return dateStr
-      const utc8Date = new Date(d.getTime() + (8 * 60 - d.getTimezoneOffset()) * 60000)
-      const day = String(utc8Date.getUTCDate()).padStart(2, '0')
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      const month = months[utc8Date.getUTCMonth()]
-      const year = String(utc8Date.getUTCFullYear()).slice(-2)
-      return `${day}-${month}-${year}`
-    } catch {
-      return dateStr
-    }
-  }
+  // Helper to format date as dd-mmm-yy in Philippine time
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-'
 
-  // Helper to format time to 12-hour format in UTC+8
-  const formatTime12hr = (timeStr: string) => {
-    if (!timeStr) return '-'
-    try {
-      let hours = 0, minutes = 0
-      if (timeStr.includes('T')) {
-        const d = new Date(timeStr)
-        if (!isNaN(d.getTime())) {
-          const utc8Date = new Date(d.getTime() + (8 * 60 - d.getTimezoneOffset()) * 60000)
-          hours = utc8Date.getUTCHours()
-          minutes = utc8Date.getUTCMinutes()
-        } else {
-          return timeStr
-        }
-      } else {
-        const parts = timeStr.split(':')
-        if (parts.length >= 2) {
-          hours = parseInt(parts[0], 10)
-          minutes = parseInt(parts[1], 10)
-        } else {
-          return timeStr
-        }
-      }
-      
-      const ampm = hours >= 12 ? 'PM' : 'AM'
-      hours = hours % 12
-      hours = hours ? hours : 12
-      const minStr = String(minutes).padStart(2, '0')
-      return `${hours}:${minStr} ${ampm}`
-    } catch {
-      return timeStr
-    }
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Manila',
+      day: '2-digit',
+      month: 'short',
+      year: '2-digit',
+    }).formatToParts(d)
+
+    const day = parts.find(p => p.type === 'day')?.value
+    const month = parts.find(p => p.type === 'month')?.value
+    const year = parts.find(p => p.type === 'year')?.value
+
+    return `${day}-${month}-${year}`
+  } catch {
+    return dateStr
   }
+}
+
+// Helper to format time to 12-hour format in Philippine time
+const formatTime12hr = (timeStr: string) => {
+  if (!timeStr) return '-'
+
+  try {
+    let d: Date
+
+    if (timeStr.includes('T')) {
+      d = new Date(timeStr)
+
+      if (isNaN(d.getTime())) return timeStr
+    } else {
+      // Handle time-only values, such as "14:30:00"
+      const parts = timeStr.split(':')
+      if (parts.length < 2) return timeStr
+
+      let hours = parseInt(parts[0], 10)
+      const minutes = parseInt(parts[1], 10)
+
+      if (
+        isNaN(hours) ||
+        isNaN(minutes) ||
+        hours < 0 || hours > 23 ||
+        minutes < 0 || minutes > 59
+      ) {
+        return timeStr
+      }
+
+      const ampm = hours >= 12 ? 'PM' : 'AM'
+      hours = hours % 12 || 12
+
+      return `${hours}:${String(minutes).padStart(2, '0')} ${ampm}`
+    }
+
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Manila',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(d)
+  } catch {
+    return timeStr
+  }
+}
 
   // Helper function to calculate working hours between clock_in and clock_out
   const calculateHours = (clockIn: string, clockOut: string) => {
@@ -96,7 +170,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     try {
       const start = clockIn.includes('T') ? new Date(clockIn) : new Date(`1970-01-01T${clockIn}`)
       const end = clockOut.includes('T') ? new Date(clockOut) : new Date(`1970-01-01T${clockOut}`)
-      
+
       const diffMs = end.getTime() - start.getTime()
       if (isNaN(diffMs) || diffMs < 0) return '-'
 
@@ -109,7 +183,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this employee?')) return
-    
+
     setLoading(true)
     try {
       const response = await fetch('/api/delete-employee', {
@@ -139,6 +213,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
 
   const handleOpenSummary = async (emp: Employee) => {
     setSummaryEmp(emp)
+    setSummaryMonth('all')
     setLoadingLogs(true)
     try {
       const { data, error } = await supabase
@@ -146,7 +221,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
         .select('*')
         .eq('employee_id', emp.id)
         .order('date', { ascending: false })
-      
+
       if (error) {
         setWorkLogs([])
       } else {
@@ -171,7 +246,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
 
     setLoading(true)
 
-    // Create a temporary client that does NOT persist session 
+    // Create a temporary client that does NOT persist session
     const tempSupabase = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -181,11 +256,11 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     const { data, error } = await tempSupabase.auth.signUp({
       email: form.email,
       password: form.password,
-      options: { 
-        data: { 
-          full_name: form.full_name, 
-          role: form.role 
-        } 
+      options: {
+        data: {
+          full_name: form.full_name,
+          role: form.role
+        }
       }
     })
 
@@ -237,15 +312,15 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     }
 
     setList((prev) => [...prev, newEmployee])
-    setForm({ 
-      full_name: '', 
-      email: '', 
-      role: 'employee', 
-      work_type: 'Hybrid', 
-      shift_start: '09:00', 
-      shift_ends: '15:00', 
-      department: '', 
-      password: '' 
+    setForm({
+      full_name: '',
+      email: '',
+      role: 'employee',
+      work_type: 'Hybrid',
+      shift_start: '09:00',
+      shift_ends: '15:00',
+      department: '',
+      password: ''
     })
     setLoading(false)
     setShowAddModal(false)
@@ -273,18 +348,69 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     }
   }
 
+  // Month filter for the working records summary
+  const monthKey = (log: any): string | null =>
+    typeof log?.date === 'string' && /^\d{4}-\d{2}/.test(log.date) ? log.date.slice(0, 7) : null
+
+  const monthLabel = (key: string) =>
+    new Date(`${key}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+
+  const monthOptions = Array.from(new Set(workLogs.map(monthKey).filter((k): k is string => !!k))).sort().reverse()
+  const filteredLogs = summaryMonth === 'all' ? workLogs : workLogs.filter((l) => monthKey(l) === summaryMonth)
+  const filteredHours = filteredLogs.reduce((sum, l) => {
+    const h = parseFloat(calculateHours(l.clock_in, l.clock_out))
+    return isNaN(h) ? sum : sum + h
+  }, 0)
+
+  // Mobile edit form (stacked fields inside the employee card)
+  const renderMobileEdit = (ed: Employee) => (
+    <div className="space-y-3">
+      <Field label="Full name"><input value={ed.full_name} onChange={(e) => setEditing({ ...ed, full_name: e.target.value })} className={fieldInput} /></Field>
+      <Field label="Email"><input type="email" value={ed.email} onChange={(e) => setEditing({ ...ed, email: e.target.value })} className={fieldInput} /></Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Role">
+          <select value={ed.role} onChange={(e) => setEditing({ ...ed, role: e.target.value })} className={fieldInput}>
+            <option>employee</option><option>admin</option>
+          </select>
+        </Field>
+        <Field label="Work type">
+          <select value={ed.work_type} onChange={(e) => setEditing({ ...ed, work_type: e.target.value })} className={fieldInput}>
+            <option>Hybrid</option><option>Remote</option><option>Onsite</option>
+          </select>
+        </Field>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Shift start"><input type="time" value={ed.shift_start || '09:00'} onChange={(e) => setEditing({ ...ed, shift_start: e.target.value })} className={fieldInput} /></Field>
+        <Field label="Shift ends"><input type="time" value={ed.shift_ends || '15:00'} onChange={(e) => setEditing({ ...ed, shift_ends: e.target.value })} className={fieldInput} /></Field>
+      </div>
+      <Field label="Department"><input value={ed.department || ''} onChange={(e) => setEditing({ ...ed, department: e.target.value })} className={fieldInput} /></Field>
+      <label className="flex items-center gap-3 rounded-2xl bg-[#F6F4FF] px-4 h-12 text-[14px] font-semibold text-[#14102B]">
+        <input type="checkbox" checked={ed.is_active} onChange={(e) => setEditing({ ...ed, is_active: e.target.checked })} className="w-5 h-5 accent-[#4B2BF0]" />
+        Active account
+      </label>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <button onClick={() => setEditing(null)} className={btnGhost}>Cancel</button>
+        <button onClick={handleEdit} disabled={loading} className={btnPrimary}>{loading ? 'Saving...' : 'Save'}</button>
+      </div>
+    </div>
+  )
+
   return (
     <>
-      <div onClick={() => setOpen(true)}>{trigger}</div>
+      <div onClick={() => setOpen(true)} className="h-full">{trigger}</div>
 
+      {/* ===== Employees list (bottom sheet on phones, centered dialog on larger screens) ===== */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative bg-white w-full max-w-[96vw] max-h-[90vh] overflow-hidden shadow-2xl flex flex-col rounded-3xl">
-            <div className="p-5 border-b flex justify-between items-center">
-              <div className="font-semibold">Employees • {list.length}</div>
-              <div className="flex gap-2">
-                <button 
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="absolute inset-0 bg-[#14102B]/55 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <div className="relative bg-white w-full sm:max-w-6xl h-[94vh] sm:h-auto sm:max-h-[90vh] overflow-hidden shadow-2xl flex flex-col rounded-t-[28px] sm:rounded-[28px]">
+            <div className="p-4 sm:p-5 border-b border-[#EEEAFF] flex justify-between items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <h2 className={`${display.className} text-[20px] sm:text-[22px] font-extrabold text-[#14102B]`}>Employees</h2>
+                <Chip>{list.length}</Chip>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
                   onClick={() => {
                     setForm({
                       full_name: '',
@@ -297,71 +423,118 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                       password: ''
                     })
                     setShowAddModal(true)
-                  }} 
-                  className="px-5 py-2 rounded-full bg-slate-900 text-white text-sm"
+                  }}
+                  className={btnPrimary}
                 >
                   + Add
                 </button>
-                <button onClick={() => setOpen(false)} className="px-5 py-2 rounded-full border bg-white text-sm">Close</button>
+                <button onClick={() => setOpen(false)} className={iconClose} aria-label="Close">✕</button>
               </div>
             </div>
+
             <div className="overflow-auto flex-1">
-              <table className="w-full table-fixed text-sm">
-                <thead className="sticky top-0 bg-slate-50 border-b text-xs text-slate-500">
+              {/* Mobile: cards */}
+              <ul className="md:hidden divide-y divide-[#EEEAFF]">
+                {list.map((emp) => (
+                  <li key={emp.id} className="p-4">
+                    {editing?.id === emp.id ? (
+                      renderMobileEdit(editing)
+                    ) : (
+                      <>
+                        <div className="flex items-start gap-3">
+                          <div className="w-11 h-11 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[13px] font-bold">
+                            {initials(emp.full_name)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <button
+                              onClick={() => handleOpenSummary(emp)}
+                              className="text-left font-semibold text-[15px] text-[#14102B] hover:text-[#4B2BF0] focus:outline-none"
+                              title="View working records summary"
+                            >
+                              {emp.full_name}
+                            </button>
+                            <div className="text-[12px] text-slate-500 break-all">{emp.email}</div>
+                          </div>
+                          <ActivePill active={emp.is_active} />
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          <Chip>{emp.role}</Chip>
+                          <Chip tone="plain">{emp.work_type}</Chip>
+                          <Chip tone="plain">{emp.department || 'No dept'}</Chip>
+                          <Chip tone="amber"><span className="tabular-nums">{emp.shift_start || '09:00'} – {emp.shift_ends || '15:00'}</span></Chip>
+                        </div>
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          <button onClick={() => handleOpenSummary(emp)} className={btnSmGhost}>Records</button>
+                          <button onClick={() => setEditing(emp)} className={btnSmGhost}>Edit</button>
+                          <button disabled={loading} onClick={() => handleDelete(emp.id)} className={btnSmDanger}>Delete</button>
+                        </div>
+                      </>
+                    )}
+                  </li>
+                ))}
+                {list.length === 0 && <li className="p-10 text-center text-sm text-slate-500">No employees yet. Tap + Add to create one.</li>}
+              </ul>
+
+              {/* Desktop: table */}
+              <table className="hidden md:table w-full table-fixed text-[13px]">
+                <thead className="sticky top-0 bg-[#F6F4FF] text-slate-600">
                   <tr>
-                    <th className="text-left p-3 w-[15%]">Full Name</th>
-                    <th className="text-left p-3 w-[18%]">Email</th>
-                    <th className="text-left p-3 w-[8%]">Role</th>
-                    <th className="text-left p-3 w-[10%]">Work Type</th>
-                    <th className="text-left p-3 w-[10%]">Shift Start</th>
-                    <th className="text-left p-3 w-[10%]">Shift Ends</th>
-                    <th className="text-left p-3 w-[11%]">Department</th>
-                    <th className="text-left p-3 w-[6%]">Active</th>
-                    <th className="text-left p-3 w-[12%]">Actions</th>
+                    <th className="text-left p-3 pl-5 w-[15%] font-semibold">Full name</th>
+                    <th className="text-left p-3 w-[15%] font-semibold">Email</th>
+                    <th className="text-left p-3 w-[10%] font-semibold">Role</th>
+                    <th className="text-left p-3 w-[9%] font-semibold">Work type</th>
+                    <th className="text-left p-3 w-[9%] font-semibold">Shift start</th>
+                    <th className="text-left p-3 w-[9%] font-semibold">Shift ends</th>
+                    <th className="text-left p-3 w-[10%] font-semibold">Department</th>
+                    <th className="text-left p-3 w-[8%] font-semibold">Active</th>
+                    <th className="text-left p-3 pr-5 w-[15%] font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {list.map((emp) => (
-                    <tr key={emp.id} className="border-b hover:bg-slate-50">
+                    <tr key={emp.id} className="border-t border-[#EEEAFF] hover:bg-[#FAF9FF]">
                       {editing?.id === emp.id ? (
                         <>
-                          <td className="p-2 align-middle"><input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} className="w-full h-8 rounded-full border px-3 text-sm" /></td>
-                          <td className="p-2 align-middle"><input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} className="w-full h-8 rounded-full border px-3 text-sm" /></td>
-                          <td className="p-2 align-middle"><select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm"><option>employee</option><option>admin</option></select></td>
-                          <td className="p-2 align-middle"><select value={editing.work_type} onChange={(e) => setEditing({ ...editing, work_type: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm"><option>Hybrid</option><option>Remote</option><option>Onsite</option></select></td>
-                          <td className="p-2 align-middle"><input type="time" value={editing.shift_start || '09:00'} onChange={(e) => setEditing({ ...editing, shift_start: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm" /></td>
-                          <td className="p-2 align-middle"><input type="time" value={editing.shift_ends || '15:00'} onChange={(e) => setEditing({ ...editing, shift_ends: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm" /></td>
-                          <td className="p-2 align-middle"><input value={editing.department || ''} onChange={(e) => setEditing({ ...editing, department: e.target.value })} className="w-full h-8 rounded-full border px-2 text-sm" /></td>
-                          <td className="p-2 align-middle"><input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} /></td>
-                          <td className="p-2 align-middle">
-                            <div className="flex gap-1">
-                              <button onClick={handleEdit} className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs">Save</button>
-                              <button onClick={() => setEditing(null)} className="px-3 py-1 rounded-full border text-xs">Cancel</button>
+                          <td className="p-2 pl-5 align-middle"><input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} className={cellInput} /></td>
+                          <td className="p-2 align-middle"><input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} className={cellInput} /></td>
+                          <td className="p-2 align-middle"><select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })} className={cellInput}><option>employee</option><option>admin</option></select></td>
+                          <td className="p-2 align-middle"><select value={editing.work_type} onChange={(e) => setEditing({ ...editing, work_type: e.target.value })} className={cellInput}><option>Hybrid</option><option>Remote</option><option>Onsite</option></select></td>
+                          <td className="p-2 align-middle"><input type="time" value={editing.shift_start || '09:00'} onChange={(e) => setEditing({ ...editing, shift_start: e.target.value })} className={cellInput} /></td>
+                          <td className="p-2 align-middle"><input type="time" value={editing.shift_ends || '15:00'} onChange={(e) => setEditing({ ...editing, shift_ends: e.target.value })} className={cellInput} /></td>
+                          <td className="p-2 align-middle"><input value={editing.department || ''} onChange={(e) => setEditing({ ...editing, department: e.target.value })} className={cellInput} /></td>
+                          <td className="p-2 align-middle"><input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} className="w-5 h-5 accent-[#4B2BF0]" aria-label="Active" /></td>
+                          <td className="p-2 pr-5 align-middle">
+                            <div className="flex gap-1.5">
+                              <button onClick={handleEdit} className={btnSmSave}>Save</button>
+                              <button onClick={() => setEditing(null)} className={btnSmGhost}>Cancel</button>
                             </div>
                           </td>
                         </>
                       ) : (
                         <>
-                          <td className="p-3 align-middle font-medium break-words">
-                            <button 
-                              onClick={() => handleOpenSummary(emp)}
-                              className="text-left text-slate-900 hover:text-indigo-600 hover:underline cursor-pointer font-medium focus:outline-none"
-                              title="Click to view working records summary"
-                            >
-                              {emp.full_name}
-                            </button>
+                          <td className="p-3 pl-5 align-middle break-words">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[11px] font-bold">{initials(emp.full_name)}</div>
+                              <button
+                                onClick={() => handleOpenSummary(emp)}
+                                className="text-left font-semibold text-[#14102B] hover:text-[#4B2BF0] hover:underline cursor-pointer focus:outline-none"
+                                title="Click to view working records summary"
+                              >
+                                {emp.full_name}
+                              </button>
+                            </div>
                           </td>
-                          <td className="p-3 align-middle break-words">{emp.email}</td>
-                          <td className="p-3 align-middle">{emp.role}</td>
+                          <td className="p-3 align-middle break-words text-slate-600">{emp.email}</td>
+                          <td className="p-3 align-middle"><Chip>{emp.role}</Chip></td>
                           <td className="p-3 align-middle">{emp.work_type}</td>
-                          <td className="p-3 align-middle font-mono">{emp.shift_start || '09:00'}</td>
-                          <td className="p-3 align-middle font-mono">{emp.shift_ends || '15:00'}</td>
+                          <td className="p-3 align-middle tabular-nums">{emp.shift_start || '09:00'}</td>
+                          <td className="p-3 align-middle tabular-nums">{emp.shift_ends || '15:00'}</td>
                           <td className="p-3 align-middle break-words">{emp.department || '-'}</td>
-                          <td className="p-3 align-middle">{emp.is_active ? 'Yes' : 'No'}</td>
-                          <td className="p-3 align-middle">
-                            <div className="flex gap-1">
-                              <button onClick={() => setEditing(emp)} className="px-3 py-1 rounded-full border text-xs">Edit</button>
-                              <button disabled={loading} onClick={() => handleDelete(emp.id)} className="px-3 py-1 rounded-full bg-red-50 text-red-600 border text-xs">Delete</button>
+                          <td className="p-3 align-middle"><ActivePill active={emp.is_active} /></td>
+                          <td className="p-3 pr-5 align-middle">
+                            <div className="flex gap-1.5">
+                              <button onClick={() => setEditing(emp)} className={btnSmGhost}>Edit</button>
+                              <button disabled={loading} onClick={() => handleDelete(emp.id)} className={btnSmDanger}>Delete</button>
                             </div>
                           </td>
                         </>
@@ -375,128 +548,150 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
         </div>
       )}
 
-      {/* Summary Modal Window */}
+      {/* ===== Summary modal ===== */}
       {summaryEmp && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSummaryEmp(null)} />
-          <div className="relative bg-white w-full max-w-3xl shadow-2xl p-7 rounded-3xl max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="flex justify-between items-start mb-5 pb-3 border-b">
-              <div>
-                <h2 className="text-lg font-semibold">{summaryEmp.full_name}&apos;s Working Records</h2>
-                <p className="text-xs text-slate-500">{summaryEmp.email} • {summaryEmp.department || 'No Dept'} • {summaryEmp.work_type}</p>
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+          <div className="absolute inset-0 bg-[#14102B]/60 backdrop-blur-sm" onClick={() => setSummaryEmp(null)} />
+          <div className="relative bg-white w-full sm:max-w-3xl shadow-2xl rounded-t-[28px] sm:rounded-[28px] max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-[#EEEAFF] flex justify-between items-start gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 shrink-0 rounded-full bg-[#4B2BF0] text-white grid place-items-center text-[13px] font-bold">{initials(summaryEmp.full_name)}</div>
+                <div className="min-w-0">
+                  <h2 className={`${display.className} text-[18px] sm:text-[20px] font-bold text-[#14102B] leading-tight`}>{summaryEmp.full_name}&apos;s working records</h2>
+                  <p className="text-[12px] text-slate-500 truncate">{summaryEmp.email} · {summaryEmp.department || 'No dept'} · {summaryEmp.work_type}</p>
+                </div>
               </div>
-              <button onClick={() => setSummaryEmp(null)} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">✕</button>
+              <button onClick={() => setSummaryEmp(null)} className={iconClose} aria-label="Close">✕</button>
             </div>
-            
+
+            {!loadingLogs && monthOptions.length > 0 && (
+              <div className="px-4 sm:px-6 py-3 border-b border-[#EEEAFF] flex gap-2 overflow-x-auto" role="tablist" aria-label="Filter by month">
+                {['all', ...monthOptions].map((m) => (
+                  <button
+                    key={m}
+                    role="tab"
+                    aria-selected={summaryMonth === m}
+                    onClick={() => setSummaryMonth(m)}
+                    className={`shrink-0 h-9 px-4 rounded-full text-[13px] font-semibold border-2 transition active:scale-[0.98] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20 ${
+                      summaryMonth === m
+                        ? 'bg-[#4B2BF0] border-[#4B2BF0] text-white'
+                        : 'bg-white border-[#E4DFFA] text-[#4B2BF0] hover:bg-[#F6F4FF]'
+                    }`}
+                  >
+                    {m === 'all' ? 'All months' : monthLabel(m)}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="overflow-y-auto flex-1">
               {loadingLogs ? (
                 <div className="py-12 text-center text-sm text-slate-500">Loading records...</div>
-              ) : workLogs.length === 0 ? (
-                <div className="py-12 text-center text-sm text-slate-500">
-                  No working records found for this employee.
-                </div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="py-12 text-center text-sm text-slate-500">No working records found for this employee.</div>
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-slate-50 border-b text-xs text-slate-500">
-                    <tr>
-                      <th className="text-left p-3">Date</th>
-                      <th className="text-left p-3">Clock In</th>
-                      <th className="text-left p-3">Clock Out</th>
-                      <th className="text-left p-3">Total Work Hours</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {workLogs.map((log, idx) => (
-                      <tr key={log.id || idx} className="border-b hover:bg-slate-50">
-                        <td className="p-3 text-xs text-slate-600">{formatDate(log.date)}</td>
-                        <td className="p-3 font-mono">{formatTime12hr(log.clock_in)}</td>
-                        <td className="p-3 font-mono">{formatTime12hr(log.clock_out)}</td>
-                        <td className="p-3 font-semibold text-indigo-600">{calculateHours(log.clock_in, log.clock_out)}</td>
-                      </tr>
+                <>
+                  {/* Mobile: list */}
+                  <ul className="sm:hidden divide-y divide-[#EEEAFF]">
+                    {filteredLogs.map((log, idx) => (
+                      <li key={log.id || idx} className="px-4 py-3 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[14px] font-semibold text-[#14102B]">{formatDate(log.date)}</div>
+                          <div className="text-[12px] text-slate-500 tabular-nums">{formatTime12hr(log.clock_in)} → {formatTime12hr(log.clock_out)}</div>
+                        </div>
+                        <Chip tone="amber"><span className="tabular-nums">{calculateHours(log.clock_in, log.clock_out)}</span></Chip>
+                      </li>
                     ))}
-                  </tbody>
-                </table>
+                  </ul>
+
+                  {/* Desktop: table */}
+                  <table className="hidden sm:table w-full text-[13px]">
+                    <thead className="sticky top-0 bg-[#F6F4FF] text-slate-600">
+                      <tr>
+                        <th className="text-left p-3 pl-6 font-semibold">Date</th>
+                        <th className="text-left p-3 font-semibold">Clock in</th>
+                        <th className="text-left p-3 font-semibold">Clock out</th>
+                        <th className="text-left p-3 pr-6 font-semibold">Total work hours</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLogs.map((log, idx) => (
+                        <tr key={log.id || idx} className="border-t border-[#EEEAFF] hover:bg-[#FAF9FF]">
+                          <td className="p-3 pl-6 text-slate-600">{formatDate(log.date)}</td>
+                          <td className="p-3 tabular-nums">{formatTime12hr(log.clock_in)}</td>
+                          <td className="p-3 tabular-nums">{formatTime12hr(log.clock_out)}</td>
+                          <td className="p-3 pr-6 font-semibold text-[#4B2BF0] tabular-nums">{calculateHours(log.clock_in, log.clock_out)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
               )}
             </div>
 
-            <div className="mt-5 pt-3 border-t flex justify-between items-center text-xs text-slate-500">
-              <div>Total Records Found: {workLogs.length}</div>
-              <button onClick={() => setSummaryEmp(null)} className="px-5 py-2 rounded-full border bg-white text-sm">Close</button>
+            <div className="p-4 sm:px-6 border-t border-[#EEEAFF] flex justify-between items-center gap-3 text-[12px] text-slate-500">
+              <div className="flex flex-col sm:flex-row sm:gap-4">
+                <span>Records: <span className="font-semibold text-[#14102B]">{filteredLogs.length}</span></span>
+                <span>Total hours: <span className="font-semibold text-[#14102B] tabular-nums">{filteredHours.toFixed(2)} hrs</span></span>
+              </div>
+              <button onClick={() => setSummaryEmp(null)} className={btnGhost}>Close</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ===== Add employee modal ===== */}
       {showAddModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
-          <div className="relative bg-white w-full max-w-md shadow-2xl p-7 rounded-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-5">
-              <h2 className="text-lg font-semibold">Add Employee</h2>
-              <button onClick={() => setShowAddModal(false)} className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">✕</button>
-            </div>
-            
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Full Name *</label>
-                <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Full name" className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Email *</label>
-                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Email address" className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Password *</label>
-                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Password" className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Work Type</label>
-                <select 
-                  value={form.work_type} 
-                  onChange={(e) => setForm({ ...form, work_type: e.target.value })} 
-                  className="w-full h-11 rounded-full border px-4 text-sm bg-white"
-                >
-                  <option value="Hybrid">Hybrid</option>
-                  <option value="Remote">Remote</option>
-                  <option value="Onsite">Onsite</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Start</label>
-                <input type="time" value={form.shift_start} onChange={(e) => setForm({ ...form, shift_start: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Shift Ends</label>
-                <input type="time" value={form.shift_ends} onChange={(e) => setForm({ ...form, shift_ends: e.target.value })} className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Department</label>
-                <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Department" className="w-full h-11 rounded-full border px-4 text-sm" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Role</label>
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  className="w-full h-11 rounded-full border px-4 text-sm bg-white"
-                >
-                  <option value="employee">employee</option>
-                  <option value="admin">admin</option>
-                </select>
-              </div>
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
+          <div className="absolute inset-0 bg-[#14102B]/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
+          <div className="relative bg-white w-full sm:max-w-md shadow-2xl rounded-t-[28px] sm:rounded-[28px] max-h-[92vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white z-10 p-5 sm:p-6 pb-3 flex justify-between items-center border-b border-[#EEEAFF]">
+              <h2 className={`${display.className} text-[22px] font-extrabold text-[#14102B]`}>Add employee</h2>
+              <button onClick={() => setShowAddModal(false)} className={iconClose} aria-label="Close">✕</button>
             </div>
 
-            <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setShowAddModal(false)} className="px-5 py-2 rounded-full border bg-white text-sm">Cancel</button>
-              <button disabled={loading} onClick={handleAdd} className="px-5 py-2 rounded-full bg-slate-900 text-white text-sm disabled:opacity-50">
-                {loading ? 'Adding...' : 'Add Employee'}
+            <div className="p-5 sm:p-6 flex flex-col gap-4">
+              <Field label="Full name *">
+                <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Full name" autoComplete="off" className={fieldInput} />
+              </Field>
+              <Field label="Email *">
+                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@waho.com.au" autoComplete="off" className={fieldInput} />
+              </Field>
+              <Field label="Password *">
+                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" autoComplete="new-password" className={fieldInput} />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Work type">
+                  <select value={form.work_type} onChange={(e) => setForm({ ...form, work_type: e.target.value })} className={fieldInput}>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="Remote">Remote</option>
+                    <option value="Onsite">Onsite</option>
+                  </select>
+                </Field>
+                <Field label="Role">
+                  <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={fieldInput}>
+                    <option value="employee">employee</option>
+                    <option value="admin">admin</option>
+                  </select>
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Shift start">
+                  <input type="time" value={form.shift_start} onChange={(e) => setForm({ ...form, shift_start: e.target.value })} className={fieldInput} />
+                </Field>
+                <Field label="Shift ends">
+                  <input type="time" value={form.shift_ends} onChange={(e) => setForm({ ...form, shift_ends: e.target.value })} className={fieldInput} />
+                </Field>
+              </div>
+              <Field label="Department">
+                <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Department" className={fieldInput} />
+              </Field>
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t border-[#EEEAFF] p-4 sm:px-6 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+              <button onClick={() => setShowAddModal(false)} className={btnGhost}>Cancel</button>
+              <button disabled={loading} onClick={handleAdd} className={btnPrimary}>
+                {loading ? 'Adding...' : 'Add employee'}
               </button>
             </div>
           </div>

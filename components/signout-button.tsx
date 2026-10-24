@@ -22,10 +22,10 @@ export default function SignOutButton() {
   }
 
   return (
-    <button 
-      onClick={handleSignOut} 
+    <button
+      onClick={handleSignOut}
       disabled={loading}
-      className="text-[13px] px-3 py-1.5 rounded-full border bg-white hover:bg-slate-50 disabled:opacity-50"
+      className="h-10 px-4 rounded-2xl bg-white text-[#4B2BF0] text-[13px] font-bold shadow-sm hover:bg-[#F6F4FF] active:scale-[0.98] transition disabled:opacity-60 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/40"
     >
       {loading ? '...' : 'Sign out'}
     </button>

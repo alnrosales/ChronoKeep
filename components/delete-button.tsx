@@ -19,7 +19,12 @@ export default function DeleteButton({ id }: { id: string }){
   }
 
   return (
-    <button disabled={loading} onClick={handleDelete} className="px-2.5 py-1 rounded-full text-[11px] border bg-red-50 text-red-600 hover:bg-red-100 border-red-200 disabled:opacity-50">
+    <button
+      disabled={loading}
+      onClick={handleDelete}
+      aria-label="Delete time record"
+      className="h-9 px-3.5 rounded-xl text-[12px] font-semibold border-2 border-[#FFC9C2] bg-[#FFF1EF] text-[#B42318] hover:bg-[#FFE1DD] active:scale-[0.98] transition disabled:opacity-60 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#FF5A4E]/25"
+    >
       {loading ? '...' : 'Delete'}
     </button>
   )
