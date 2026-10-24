@@ -71,3 +71,16 @@ export async function deleteTimeEntry(id: string, reason?: string): Promise<Resu
     return error
   })
 }
+
+export async function deleteEmployee(id: string, reason?: string): Promise<Result> {
+  return run(async (adminId) => {
+    const { error } = await createServiceClient().rpc('admin_delete_employee', {
+      p_employee_id: id,
+      p_actor: adminId,
+      p_reason: cleanReason(reason),
+    })
+    // 23503 = foreign key violation (the employee still has linked records)
+    if (error?.code === '23503') return { message: 'This employee still has linked records that block deletion.' }
+    return error
+  })
+}

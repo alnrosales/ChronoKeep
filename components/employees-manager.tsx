@@ -2,7 +2,9 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { useRouter } from 'next/navigation'
 import { Bricolage_Grotesque } from 'next/font/google'
+import { deleteEmployee } from '@/app/admin/actions'
 
 const display = Bricolage_Grotesque({ subsets: ['latin'], weight: ['500', '700', '800'] })
 
@@ -93,76 +95,64 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   })
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
+  const router = useRouter()
 
-  // Helper to format date as dd-mmm-yy in Philippine time
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
+  // Delete-employee confirmation (goes through the logged server action)
+  const [deleting, setDeleting] = useState<Employee | null>(null)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deleteErr, setDeleteErr] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
-  try {
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return dateStr
-
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Manila',
-      day: '2-digit',
-      month: 'short',
-      year: '2-digit',
-    }).formatToParts(d)
-
-    const day = parts.find(p => p.type === 'day')?.value
-    const month = parts.find(p => p.type === 'month')?.value
-    const year = parts.find(p => p.type === 'year')?.value
-
-    return `${day}-${month}-${year}`
-  } catch {
-    return dateStr
+  // Helper to format date as dd-mmm-yy in UTC+8
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-'
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return dateStr
+      const utc8Date = new Date(d.getTime() + (8 * 60 - d.getTimezoneOffset()) * 60000)
+      const day = String(utc8Date.getUTCDate()).padStart(2, '0')
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      const month = months[utc8Date.getUTCMonth()]
+      const year = String(utc8Date.getUTCFullYear()).slice(-2)
+      return `${day}-${month}-${year}`
+    } catch {
+      return dateStr
+    }
   }
-}
 
-// Helper to format time to 12-hour format in Philippine time
-const formatTime12hr = (timeStr: string) => {
-  if (!timeStr) return '-'
-
-  try {
-    let d: Date
-
-    if (timeStr.includes('T')) {
-      d = new Date(timeStr)
-
-      if (isNaN(d.getTime())) return timeStr
-    } else {
-      // Handle time-only values, such as "14:30:00"
-      const parts = timeStr.split(':')
-      if (parts.length < 2) return timeStr
-
-      let hours = parseInt(parts[0], 10)
-      const minutes = parseInt(parts[1], 10)
-
-      if (
-        isNaN(hours) ||
-        isNaN(minutes) ||
-        hours < 0 || hours > 23 ||
-        minutes < 0 || minutes > 59
-      ) {
-        return timeStr
+  // Helper to format time to 12-hour format in UTC+8
+  const formatTime12hr = (timeStr: string) => {
+    if (!timeStr) return '-'
+    try {
+      let hours = 0, minutes = 0
+      if (timeStr.includes('T')) {
+        const d = new Date(timeStr)
+        if (!isNaN(d.getTime())) {
+          const utc8Date = new Date(d.getTime() + (8 * 60 - d.getTimezoneOffset()) * 60000)
+          hours = utc8Date.getUTCHours()
+          minutes = utc8Date.getUTCMinutes()
+        } else {
+          return timeStr
+        }
+      } else {
+        const parts = timeStr.split(':')
+        if (parts.length >= 2) {
+          hours = parseInt(parts[0], 10)
+          minutes = parseInt(parts[1], 10)
+        } else {
+          return timeStr
+        }
       }
 
       const ampm = hours >= 12 ? 'PM' : 'AM'
-      hours = hours % 12 || 12
-
-      return `${hours}:${String(minutes).padStart(2, '0')} ${ampm}`
+      hours = hours % 12
+      hours = hours ? hours : 12
+      const minStr = String(minutes).padStart(2, '0')
+      return `${hours}:${minStr} ${ampm}`
+    } catch {
+      return timeStr
     }
-
-    return new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Manila',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    }).format(d)
-  } catch {
-    return timeStr
   }
-}
 
   // Helper function to calculate working hours between clock_in and clock_out
   const calculateHours = (clockIn: string, clockOut: string) => {
@@ -181,33 +171,24 @@ const formatTime12hr = (timeStr: string) => {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this employee?')) return
+  const openDelete = (emp: Employee) => { setDeleting(emp); setDeleteReason(''); setDeleteErr('') }
 
-    setLoading(true)
+  const confirmDelete = async () => {
+    if (!deleting) return
+    setDeleteBusy(true); setDeleteErr('')
     try {
-      const response = await fetch('/api/delete-employee', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: id })
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        const { error: dbError } = await supabase.from('profiles').delete().eq('id', id)
-        if (dbError) {
-          alert(`Failed to delete: ${dbError.message}`)
-        } else {
-          setList((prev) => prev.filter((e) => e.id !== id))
-        }
+      const r = await deleteEmployee(deleting.id, deleteReason)
+      if (r.ok) {
+        setList((prev) => prev.filter((e) => e.id !== deleting.id))
+        setDeleting(null)
+        router.refresh()
       } else {
-        setList((prev) => prev.filter((e) => e.id !== id))
+        setDeleteErr(r.error)
       }
-    } catch (err: any) {
-      alert(`Delete error: ${err.message}`)
+    } catch (e: any) {
+      setDeleteErr(e?.message || 'Delete failed.')
     } finally {
-      setLoading(false)
+      setDeleteBusy(false)
     }
   }
 
@@ -466,7 +447,7 @@ const formatTime12hr = (timeStr: string) => {
                         <div className="mt-3 grid grid-cols-3 gap-2">
                           <button onClick={() => handleOpenSummary(emp)} className={btnSmGhost}>Records</button>
                           <button onClick={() => setEditing(emp)} className={btnSmGhost}>Edit</button>
-                          <button disabled={loading} onClick={() => handleDelete(emp.id)} className={btnSmDanger}>Delete</button>
+                          <button disabled={loading} onClick={() => openDelete(emp)} className={btnSmDanger}>Delete</button>
                         </div>
                       </>
                     )}
@@ -534,7 +515,7 @@ const formatTime12hr = (timeStr: string) => {
                           <td className="p-3 pr-5 align-middle">
                             <div className="flex gap-1.5">
                               <button onClick={() => setEditing(emp)} className={btnSmGhost}>Edit</button>
-                              <button disabled={loading} onClick={() => handleDelete(emp.id)} className={btnSmDanger}>Delete</button>
+                              <button disabled={loading} onClick={() => openDelete(emp)} className={btnSmDanger}>Delete</button>
                             </div>
                           </td>
                         </>
@@ -635,6 +616,40 @@ const formatTime12hr = (timeStr: string) => {
                 <span>Total hours: <span className="font-semibold text-[#14102B] tabular-nums">{filteredHours.toFixed(2)} hrs</span></span>
               </div>
               <button onClick={() => setSummaryEmp(null)} className={btnGhost}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Delete employee confirmation ===== */}
+      {deleting && (
+        <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center sm:p-4">
+          <div className="absolute inset-0 bg-[#14102B]/60 backdrop-blur-sm" onClick={() => !deleteBusy && setDeleting(null)} />
+          <div role="dialog" aria-modal="true" aria-label="Delete employee" className="relative bg-white w-full sm:max-w-md shadow-2xl rounded-t-[28px] sm:rounded-[28px] max-h-[92vh] overflow-y-auto">
+            <div className="p-5 sm:p-6 border-b border-[#EEEAFF] flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 shrink-0 rounded-full bg-[#FFF1EF] text-[#B42318] grid place-items-center text-[13px] font-bold">{initials(deleting.full_name)}</div>
+                <div className="min-w-0">
+                  <h3 className={`${display.className} text-[18px] font-extrabold text-[#14102B] leading-tight`}>Delete employee</h3>
+                  <div className="text-[12px] text-slate-500 truncate">{deleting.full_name} · {deleting.email}</div>
+                </div>
+              </div>
+              <button onClick={() => setDeleting(null)} disabled={deleteBusy} className={iconClose} aria-label="Close">✕</button>
+            </div>
+            <div className="p-5 sm:p-6 space-y-4">
+              <p className="text-[14px] text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] rounded-2xl p-3">
+                This permanently deletes {deleting.full_name}&apos;s account and profile, and they can no longer sign in. This can&apos;t be undone, but the deletion will be recorded in the admin changes log.
+              </p>
+              <Field label="Reason (optional)">
+                <input value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} maxLength={300} placeholder="e.g. Left the company" className={fieldInput} />
+              </Field>
+              {deleteErr && <div role="alert" className="text-[13px] text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] p-3 rounded-2xl">{deleteErr}</div>}
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => setDeleting(null)} disabled={deleteBusy} className={btnGhost}>Cancel</button>
+                <button onClick={confirmDelete} disabled={deleteBusy} className="h-11 px-5 rounded-2xl bg-[#B42318] text-white text-sm font-bold hover:bg-[#912018] active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-[#B42318]/30">
+                  {deleteBusy ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
