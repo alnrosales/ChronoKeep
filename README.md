@@ -106,10 +106,9 @@ lib/supabase/               Supabase browser and server clients
 
 ## Security notes
 
-- Keep the service role key server-side only. It is used by Server Components and Server Actions.
-- Remove any old RLS policy that lets admins delete from `time_entries` directly (for example "Admin can delete entries"). Deletes should only go through the logged admin actions.
-- Remove the old `/api/delete-employee` route if it still exists, since it bypasses the log.
-- The login page includes a `handleSignupDemo` function for demos. It isn't wired to a button, but remove it before production.
+- The service role key (`SUPABASE_SERVICE_ROLE_KEY`) is used only in server code: Server Components (`app/admin/page.tsx`) and Server Actions (`app/admin/actions.ts`). It is never prefixed with `NEXT_PUBLIC_` and no client component reads it. The browser only ever gets the anon key.
+- Add `import 'server-only'` at the top of `lib/supabase/server.ts` (`npm i server-only`). The build then fails if anything marked `'use client'` ever imports it.
+- Every admin action is checked on the server (signed in, role `admin`, account active) before it runs. The admin's identity comes from the session, not from the request.
 
 ## Known limits
 
