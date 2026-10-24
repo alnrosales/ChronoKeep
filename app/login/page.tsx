@@ -127,17 +127,6 @@ export default function LoginPage() {
     }
   }
 
-  const handleSignupDemo = async () => {
-    setLoading(true); setError('')
-    const { error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: email.split('@')[0], role: email.includes('admin') ? 'admin' : 'employee' } }
-    })
-    if (error) setError(error.message)
-    else setError('Check email to confirm, or disable email confirmation in Supabase Auth settings for demo.')
-    setLoading(false)
-  }
-
   const bigTime = now === null ? '--:--' : zoneTime(now, Intl.DateTimeFormat().resolvedOptions().timeZone).text
 
   return (
