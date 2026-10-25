@@ -69,6 +69,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [now, setNow] = useState<number | null>(null)
+  const [keyboardInset, setKeyboardInset] = useState(0)
   const router = useRouter()
   const supabase = createClient()
 
@@ -77,6 +78,32 @@ export default function LoginPage() {
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
+
+  // Mobile keyboard: when the on-screen keyboard opens, the visual viewport shrinks.
+  // Add matching bottom padding so the page can scroll far enough, then bring the
+  // focused field into view so it is never hidden behind the keyboard.
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const onResize = () => {
+      const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))
+      const open = inset > 100 // ignore small changes from the browser toolbar
+      setKeyboardInset(open ? inset : 0)
+      const el = document.activeElement as HTMLElement | null
+      if (open && el && el.tagName === 'INPUT') {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
+    }
+    vv.addEventListener('resize', onResize)
+    return () => vv.removeEventListener('resize', onResize)
+  }, [])
+
+  // Fallback for browsers that resize the layout instead (or fire no viewport event):
+  // wait for the keyboard animation, then center the tapped field.
+  const revealField = (e: React.FocusEvent<HTMLInputElement>) => {
+    const el = e.currentTarget
+    setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350)
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -130,7 +157,10 @@ export default function LoginPage() {
   const bigTime = now === null ? '--:--' : zoneTime(now, Intl.DateTimeFormat().resolvedOptions().timeZone).text
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-[#EEEAFF]">
+    <div
+      className="min-h-screen flex items-start sm:items-center justify-center p-4 sm:p-6 bg-[#EEEAFF]"
+      style={{ minHeight: '100dvh', paddingBottom: keyboardInset ? keyboardInset + 16 : undefined }}
+    >
       <div className="w-full max-w-[1040px] grid lg:grid-cols-[1.1fr_0.9fr] rounded-[32px] overflow-hidden shadow-[0_30px_80px_-20px_rgba(60,30,200,0.45)] bg-white">
 
         {/* Left: live clock panel (desktop) */}
@@ -197,9 +227,15 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
+                inputMode="email"
+                enterKeyHint="next"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                onFocus={revealField}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="mt-1.5 w-full h-12 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-4 text-sm text-[#14102B] placeholder:text-slate-400 transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15"
+                className="mt-1.5 w-full h-12 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-4 text-[16px] sm:text-sm text-[#14102B] placeholder:text-slate-400 transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15"
                 placeholder="name@waho.com.au"
                 required
               />
@@ -211,9 +247,11 @@ export default function LoginPage() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
+                  enterKeyHint="go"
+                  onFocus={revealField}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="mt-1.5 w-full h-12 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] pl-4 pr-16 text-sm text-[#14102B] placeholder:text-slate-400 transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15"
+                  className="mt-1.5 w-full h-12 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] pl-4 pr-16 text-[16px] sm:text-sm text-[#14102B] placeholder:text-slate-400 transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15"
                   placeholder="••••••••"
                   required
                 />

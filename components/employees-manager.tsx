@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { Bricolage_Grotesque } from 'next/font/google'
-import { deleteEmployee } from '@/app/admin/actions'
+import { deleteEmployee, resetEmployeePassword } from '@/app/admin/actions'
 
 const display = Bricolage_Grotesque({ subsets: ['latin'], weight: ['500', '700', '800'] })
 
@@ -40,6 +40,32 @@ const iconClose =
 
 const initials = (name?: string | null) =>
   (name || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '?'
+
+// 8-character random password: crypto-random, no look-alike characters (0/O, 1/l/I),
+// always contains a lowercase letter, an uppercase letter and a digit.
+const PW_LOWER = 'abcdefghjkmnpqrstuvwxyz'
+const PW_UPPER = 'ABCDEFGHJKMNPQRSTUVWXYZ'
+const PW_DIGIT = '23456789'
+
+function randInt(max: number): number {
+  const limit = Math.floor(0x100000000 / max) * max // rejection sampling: no modulo bias
+  const buf = new Uint32Array(1)
+  let x: number
+  do { crypto.getRandomValues(buf); x = buf[0] } while (x >= limit)
+  return x % max
+}
+
+function generatePassword(): string {
+  const pick = (set: string) => set[randInt(set.length)]
+  const all = PW_LOWER + PW_UPPER + PW_DIGIT
+  const chars = [pick(PW_LOWER), pick(PW_UPPER), pick(PW_DIGIT)]
+  while (chars.length < 8) chars.push(pick(all))
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randInt(i + 1)
+    ;[chars[i], chars[j]] = [chars[j], chars[i]]
+  }
+  return chars.join('')
+}
 
 function ActivePill({ active }: { active: boolean }) {
   return active ? (
@@ -102,6 +128,15 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   const [deleteReason, setDeleteReason] = useState('')
   const [deleteErr, setDeleteErr] = useState('')
   const [deleteBusy, setDeleteBusy] = useState(false)
+
+  // Reset-password window
+  const [resetting, setResetting] = useState<Employee | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [resetReason, setResetReason] = useState('')
+  const [resetErr, setResetErr] = useState('')
+  const [resetBusy, setResetBusy] = useState(false)
+  const [resetDone, setResetDone] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   // Helper to format date as dd-mmm-yy in UTC+8
   const formatDate = (dateStr: string) => {
@@ -189,6 +224,44 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       setDeleteErr(e?.message || 'Delete failed.')
     } finally {
       setDeleteBusy(false)
+    }
+  }
+
+  const openReset = (emp: Employee) => {
+    setResetting(emp); setNewPassword(''); setResetReason(''); setResetErr(''); setResetDone(false); setCopied(false)
+  }
+
+  const copyPassword = async () => {
+    if (!newPassword) return
+    try {
+      await navigator.clipboard.writeText(newPassword)
+    } catch {
+      // Fallback for browsers/contexts where the Clipboard API isn't available
+      const ta = document.createElement('textarea')
+      ta.value = newPassword
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const confirmReset = async () => {
+    if (!resetting) return
+    if (newPassword.length < 8) { setResetErr('Password must be at least 8 characters.'); return }
+    setResetBusy(true); setResetErr('')
+    try {
+      const r = await resetEmployeePassword(resetting.id, newPassword, resetReason)
+      if (r.ok) setResetDone(true)
+      else setResetErr(r.error)
+    } catch (e: any) {
+      setResetErr(e?.message || 'Password reset failed.')
+    } finally {
+      setResetBusy(false)
     }
   }
 
@@ -369,6 +442,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
         <input type="checkbox" checked={ed.is_active} onChange={(e) => setEditing({ ...ed, is_active: e.target.checked })} className="w-5 h-5 accent-[#4B2BF0]" />
         Active account
       </label>
+      <button onClick={() => openReset(ed)} className={`${btnGhost} w-full`}>Reset password</button>
       <div className="grid grid-cols-2 gap-2 pt-1">
         <button onClick={() => setEditing(null)} className={btnGhost}>Cancel</button>
         <button onClick={handleEdit} disabled={loading} className={btnPrimary}>{loading ? 'Saving...' : 'Save'}</button>
@@ -485,9 +559,10 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                           <td className="p-2 align-middle"><input value={editing.department || ''} onChange={(e) => setEditing({ ...editing, department: e.target.value })} className={cellInput} /></td>
                           <td className="p-2 align-middle"><input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} className="w-5 h-5 accent-[#4B2BF0]" aria-label="Active" /></td>
                           <td className="p-2 pr-5 align-middle">
-                            <div className="flex gap-1.5">
+                            <div className="flex flex-wrap gap-1.5">
                               <button onClick={handleEdit} className={btnSmSave}>Save</button>
                               <button onClick={() => setEditing(null)} className={btnSmGhost}>Cancel</button>
+                              <button onClick={() => openReset(emp)} className={`${btnSmGhost} w-full`}>Reset password</button>
                             </div>
                           </td>
                         </>
@@ -616,6 +691,87 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                 <span>Total hours: <span className="font-semibold text-[#14102B] tabular-nums">{filteredHours.toFixed(2)} hrs</span></span>
               </div>
               <button onClick={() => setSummaryEmp(null)} className={btnGhost}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== Reset password window ===== */}
+      {resetting && (
+        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center sm:p-4">
+          <div className="absolute inset-0 bg-[#14102B]/60 backdrop-blur-sm" onClick={() => !resetBusy && setResetting(null)} />
+          <div role="dialog" aria-modal="true" aria-label="Reset password" className="relative bg-white w-full sm:max-w-md shadow-2xl rounded-t-[28px] sm:rounded-[28px] max-h-[92vh] overflow-y-auto">
+            <div className="p-5 sm:p-6 border-b border-[#EEEAFF] flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 shrink-0 rounded-full bg-[#4B2BF0] text-white grid place-items-center text-[13px] font-bold">{initials(resetting.full_name)}</div>
+                <div className="min-w-0">
+                  <h3 className={`${display.className} text-[18px] font-extrabold text-[#14102B] leading-tight`}>Reset password</h3>
+                  <div className="text-[12px] text-slate-500 truncate">{resetting.full_name} · {resetting.email}</div>
+                </div>
+              </div>
+              <button onClick={() => setResetting(null)} disabled={resetBusy} className={iconClose} aria-label="Close">✕</button>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-4">
+              {resetDone ? (
+                <p role="status" className="text-[14px] text-[#0B7A55] bg-[#E3FBF2] border border-[#B7F0DA] rounded-2xl p-3">
+                  Password updated for {resetting.full_name}. Copy it now and share it securely. It won&apos;t be shown again after you close this window.
+                </p>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="new-password" className="text-[13px] font-semibold text-[#14102B]">Enter new password</label>
+                  <button
+                    type="button"
+                    onClick={() => { setNewPassword(generatePassword()); setCopied(false); setResetErr('') }}
+                    className="h-8 px-3 rounded-full bg-[#EEEAFF] text-[#4B2BF0] text-[12px] font-semibold hover:bg-[#E2DBFF] active:scale-[0.98] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20"
+                  >
+                    Generate
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  id="new-password"
+                  type="text"
+                  value={newPassword}
+                  onChange={(e) => { setNewPassword(e.target.value); setCopied(false) }}
+                  readOnly={resetDone}
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={72}
+                  placeholder="At least 8 characters"
+                  className={`${fieldInput} font-mono tracking-wider`}
+                />
+                <button
+                  type="button"
+                  onClick={copyPassword}
+                  disabled={!newPassword}
+                  className={`${btnGhost} shrink-0 !px-4`}
+                  aria-label="Copy password"
+                >
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+
+              {!resetDone && (
+                <Field label="Reason (optional)">
+                  <input value={resetReason} onChange={(e) => setResetReason(e.target.value)} maxLength={300} placeholder="e.g. Forgot their password" className={fieldInput} />
+                </Field>
+              )}
+
+              {resetErr && <div role="alert" className="text-[13px] text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] p-3 rounded-2xl">{resetErr}</div>}
+
+              {!resetDone && <p className="text-[11px] text-slate-400">This reset is recorded in the admin changes log. The password itself is never stored there.</p>}
+
+              {resetDone ? (
+                <button onClick={() => setResetting(null)} className={`${btnPrimary} w-full`}>Done</button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => setResetting(null)} disabled={resetBusy} className={btnGhost}>Cancel</button>
+                  <button onClick={confirmReset} disabled={resetBusy || !newPassword} className={btnPrimary}>{resetBusy ? 'Saving...' : 'Reset password'}</button>
+                </div>
+              )}
             </div>
           </div>
         </div>

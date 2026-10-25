@@ -7,7 +7,7 @@ type LogRow = {
   created_at: string
   actor_name: string | null
   actor_email: string | null
-  action: 'edit' | 'force_clock_out' | 'delete' | 'delete_employee'
+  action: 'edit' | 'force_clock_out' | 'delete' | 'delete_employee' | 'reset_password'
   employee_name: string | null
   before_data: any
   after_data: any
@@ -31,6 +31,7 @@ const ACTIONS = {
   force_clock_out: { label: 'Forced clock out', cls: 'bg-[#FFF4D6] text-[#8A5A00]' },
   delete: { label: 'Deleted record', cls: 'bg-[#FFF1EF] text-[#B42318]' },
   delete_employee: { label: 'Deleted employee', cls: 'bg-[#FFE1DD] text-[#912018]' },
+  reset_password: { label: 'Reset password', cls: 'bg-[#E3FBF2] text-[#0B7A55]' },
 } as const
 
 function details(row: LogRow): string[] {
@@ -43,16 +44,12 @@ function details(row: LogRow): string[] {
     return out.length ? out : ['No time values changed']
   }
   if (row.action === 'force_clock_out') return [`Clock out set to ${when(a.clock_out)}`, `Clock in was ${when(b.clock_in)}`]
+  if (row.action === 'reset_password') return ['Password reset by an admin', 'The new password is not stored']
   if (row.action === 'delete_employee') {
     const n = Number(b.time_entries_count ?? 0)
     return [`${b.email ?? 'No email'} · ${b.role ?? 'No role'}${b.department ? ` · ${b.department}` : ''}`, `${n} time record${n === 1 ? '' : 's'} on file at deletion`]
   }
-  const recordDate = b.date
-    ? new Date(`${b.date}T00:00:00Z`).toLocaleDateString('en-US', {
-        timeZone: 'UTC', month: 'short', day: '2-digit', year: 'numeric',
-      })
-    : 'unknown date'
-  return [`Record for ${recordDate}`, `In ${when(b.clock_in)} · Out ${when(b.clock_out)}`]
+  return [`Record for ${b.date ?? 'unknown date'}`, `In ${when(b.clock_in)} · Out ${when(b.clock_out)}`]
 }
 
 export default function AdminChangesLog({ logs, errorMessage }: { logs: LogRow[]; errorMessage?: string | null }) {
@@ -61,7 +58,7 @@ export default function AdminChangesLog({ logs, errorMessage }: { logs: LogRow[]
       <div className="p-4 sm:p-5 border-b border-[#EEEAFF] flex items-center justify-between gap-3">
         <div>
           <h2 className={`${display.className} text-[18px] sm:text-[20px] font-bold text-[#14102B]`}>Admin changes log</h2>
-          <p className="text-[12px] text-slate-500 mt-0.5">Every edit, forced clock out and deletion (records and employees). Entries can&apos;t be changed or removed.</p>
+          <p className="text-[12px] text-slate-500 mt-0.5">Every edit, forced clock out, deletion and password reset. Entries can&apos;t be changed or removed.</p>
         </div>
         <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#E3FBF2] text-[#0B7A55] px-2.5 py-1 text-[12px] font-semibold">
           <span className="w-1.5 h-1.5 rounded-full bg-[#2EE6A6]" aria-hidden /> Locked

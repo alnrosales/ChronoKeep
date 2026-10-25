@@ -84,3 +84,26 @@ export async function deleteEmployee(id: string, reason?: string): Promise<Resul
     return error
   })
 }
+
+export async function resetEmployeePassword(id: string, newPassword: string, reason?: string): Promise<Result> {
+  return run(async (adminId) => {
+    if (typeof newPassword !== 'string' || newPassword.length < 8) return { message: 'Password must be at least 8 characters.' }
+    if (newPassword.length > 72) return { message: 'Password must be 72 characters or fewer.' }
+
+    const db = createServiceClient()
+    const { data: target } = await db.from('profiles').select('id').eq('id', id).single()
+    if (!target) return { message: 'Employee not found.' }
+
+    const { error } = await db.auth.admin.updateUserById(id, { password: newPassword })
+    if (error) return error
+
+    // Record it in the admin changes log. The password itself is never logged.
+    const { error: logError } = await db.rpc('admin_log_password_reset', {
+      p_employee_id: id,
+      p_actor: adminId,
+      p_reason: cleanReason(reason),
+    })
+    if (logError) return { message: `The password was changed, but writing the log entry failed: ${logError.message}` }
+    return null
+  })
+}
