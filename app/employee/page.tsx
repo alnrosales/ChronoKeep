@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Bricolage_Grotesque } from 'next/font/google'
 import ClockCard from '@/components/clock-card'
 import SignOutButton from '@/components/signout-button'
+import ShiftSummary from '@/components/shift-summary'
 
 const display = Bricolage_Grotesque({
   subsets: ['latin'],
@@ -66,67 +67,60 @@ export default async function EmployeePage() {
 
   const firstName = profile?.full_name?.trim().split(/\s+/)[0] || 'there'
   const entries = history || []
-  const completedEntries = entries.filter((entry: any) => entry.clock_in && entry.clock_out)
-  const totalMinutes = completedEntries.reduce((sum: number, entry: any) => {
-    const minutes =
-      (new Date(entry.clock_out).getTime() - new Date(entry.clock_in).getTime()) / 60000
-    return sum + Math.max(0, minutes)
-  }, 0)
-  const totalHours = (totalMinutes / 60).toFixed(1)
 
   return (
     <main className="min-h-screen bg-[#EEEAFF] p-3 sm:p-6">
       <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
         {/* Brand header */}
-        <header className="relative isolate overflow-hidden rounded-[24px] sm:rounded-[28px] bg-[#4B2BF0] p-5 text-white shadow-[0_24px_60px_-24px_rgba(60,30,200,0.55)] sm:p-7">
+        <header className="relative isolate overflow-hidden rounded-[22px] sm:rounded-[25px] bg-[#4B2BF0] p-[18px] text-white shadow-[0_22px_54px_-22px_rgba(60,30,200,0.55)] sm:p-[25px]">
           <div
             aria-hidden
-            className="absolute -right-14 -top-20 -z-10 h-56 w-56 rounded-full bg-[#FF5A4E]"
+            className="absolute -right-[50px] -top-[72px] -z-10 h-[202px] w-[202px] rounded-full bg-[#FF5A4E]"
           />
           <div
             aria-hidden
-            className="absolute right-28 -bottom-24 -z-10 h-44 w-44 rounded-full bg-[#7A5CFF]"
+            className="absolute right-[101px] -bottom-[86px] -z-10 h-[158px] w-[158px] rounded-full bg-[#7A5CFF]"
           />
           <div
             aria-hidden
-            className="absolute left-[42%] -top-24 -z-10 h-40 w-40 rounded-full bg-white/10"
+            className="absolute left-[42%] -top-[86px] -z-10 h-[144px] w-[144px] rounded-full bg-white/10"
           />
 
-          <div className="relative flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-lg font-extrabold text-[#4B2BF0] shadow-sm">
+          <div className="relative flex items-start justify-between gap-[11px]">
+            <div className="flex min-w-0 items-center gap-[11px]">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-white text-base font-extrabold text-[#4B2BF0] shadow-sm">
                 C
               </div>
               <div className="min-w-0">
-                <div className={`${display.className} text-xl font-extrabold leading-tight sm:text-2xl`}>
+                <div className={`${display.className} text-[18px] font-extrabold leading-tight sm:text-[22px]`}>
                   ChronoKeep
                 </div>
-                <div className="mt-0.5 truncate text-xs text-white/75 sm:text-sm">
+                <div className="mt-0.5 truncate text-[11px] text-white/75 sm:text-[13px]">
                   Employee workspace · {profile?.email || user.email}
                 </div>
               </div>
             </div>
-            <div className="shrink-0 rounded-xl bg-white p-1 text-slate-900 shadow-sm">
+            <div className="shrink-0">
               <SignOutButton />
             </div>
           </div>
 
-          <div className="relative mt-8 flex flex-col justify-between gap-5 sm:mt-10 sm:flex-row sm:items-end">
+          <div className="relative mt-7 flex flex-col justify-between gap-[18px] sm:mt-9 sm:flex-row sm:items-end">
             <div className="max-w-2xl">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur">
-                <span className="h-2 w-2 rounded-full bg-[#2EE6A6]" />
+              <div className="mb-[11px] inline-flex items-center gap-[7px] rounded-full border border-white/20 bg-white/10 px-[11px] py-[5.5px] text-[11px] leading-[14px] font-semibold text-white/90 backdrop-blur">
+                <span className="h-[7px] w-[7px] rounded-full bg-[#2EE6A6]" />
                 YOUR DAY, IN SYNC
               </div>
-              <h1 className={`${display.className} text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl`}>
+              <h1 className={`${display.className} text-[27px] font-extrabold leading-tight tracking-tight sm:text-[32px] sm:leading-[36px]`}>
                 Good day, {firstName}!
               </h1>
-              <p className="mt-2 max-w-lg text-sm leading-relaxed text-white/80 sm:text-base">
+              <p className="mt-[7px] max-w-[460px] text-[13px] leading-relaxed text-white/80 sm:text-[14.5px] sm:leading-[21.6px]">
                 One place to keep your time on track. Check in, stay focused, and keep your workday moving.
               </p>
             </div>
-            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm sm:min-w-[190px]">
-              <div className="text-xs font-medium text-white/70">TODAY · DAVAO CITY TIME</div>
-              <div className={`${display.className} mt-1 text-lg font-bold`}>
+            <div className="rounded-[14px] border border-white/15 bg-white/10 px-[14px] py-[11px] backdrop-blur-sm sm:min-w-[171px]">
+              <div className="text-[11px] leading-[14px] font-medium text-white/70">TODAY · DAVAO CITY TIME</div>
+              <div className={`${display.className} mt-[3px] text-[16px] leading-[25px] font-bold`}>
                 {new Date().toLocaleDateString('en-PH', {
                   timeZone: 'Asia/Manila',
                   weekday: 'long',
@@ -135,7 +129,7 @@ export default async function EmployeePage() {
                   year: 'numeric',
                 })}
               </div>
-              <div className="mt-1 text-xs text-white/70">Waho Solutions Inc.</div>
+              <div className="mt-[3px] text-[11px] leading-[14px] text-white/70">Waho Solutions Inc.</div>
             </div>
           </div>
         </header>
@@ -180,16 +174,7 @@ export default async function EmployeePage() {
             </p>
           </div>
 
-          <div className="rounded-[20px] border border-white bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-[#14102B]">Recent hours</div>
-              <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#E3FBF2] text-[#0B7A55]" aria-hidden>↗</span>
-            </div>
-            <div className={`${display.className} mt-3 text-2xl font-extrabold text-[#14102B]`}>
-              {totalHours}<span className="ml-1 text-sm font-bold text-slate-400">hrs</span>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">Across completed shifts in your latest 30 records</p>
-          </div>
+          <ShiftSummary employeeId={user.id} />
         </section>
 
         {/* Main workspace */}
@@ -258,22 +243,13 @@ export default async function EmployeePage() {
                   </p>
                 </div>
               ) : (
-                entries.map((entry: any, index: number) => (
+                entries.map((entry: any) => (
                   <article
                     key={entry.id}
                     className="rounded-2xl border border-[#EEEAFF] bg-[#FAF9FF] p-3.5 transition hover:border-[#C9BEFF] hover:bg-white sm:p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-3">
-                        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-extrabold ${
-                          index % 3 === 0
-                            ? 'bg-[#EEEAFF] text-[#4B2BF0]'
-                            : index % 3 === 1
-                              ? 'bg-[#FFF0EE] text-[#D93F35]'
-                              : 'bg-[#E3FBF2] text-[#0B7A55]'
-                        }`}>
-                          {String(index + 1).padStart(2, '0')}
-                        </div>
                         <div className="min-w-0">
                           <div className="font-bold text-[#14102B]">
                             {new Date(`${entry.date}T12:00:00`).toLocaleDateString('en-PH', {
@@ -312,6 +288,11 @@ export default async function EmployeePage() {
                         </div>
                       </div>
                     </div>
+                    {entry.quick_clockout_reason && (
+                      <div className="mt-2 rounded-xl bg-[#FFF4D6] px-3 py-2 text-xs leading-relaxed text-[#8A5A00] break-words">
+                        <span className="font-bold">Quick clock-out:</span> {entry.quick_clockout_reason}
+                      </div>
+                    )}
                     <div className="mt-2 flex items-center justify-between gap-2 px-1 text-[11px] text-slate-400">
                       <span>{entry.clock_in ? manilaDateTime(entry.clock_in) : entry.date}</span>
                       {entry.clock_out && entry.clock_in ? (

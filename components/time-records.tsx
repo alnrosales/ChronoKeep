@@ -13,6 +13,7 @@ type Entry = {
   clock_in: string | null
   clock_out: string | null
   mode?: string | null
+  quick_clockout_reason?: string | null
   employee?: { full_name?: string | null; email?: string | null } | null
 }
 type Result = { ok: true } | { ok: false; error: string }
@@ -40,41 +41,8 @@ const iconClose =
 
 // ---- helpers (all times shown in Manila time) ----
 const fullTime = (iso: string) => new Date(iso).toLocaleString('en-PH', { timeZone: 'Asia/Manila', hour12: true })
-const timeOnly = (iso: string | null | undefined) => {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleTimeString('en-PH', {
-    timeZone: 'Asia/Manila',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
-}
 const shortTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true })
-
-const formatDate = (dateStr?: string | null) => {
-  if (!dateStr) return '—'
-
-  try {
-    const date = new Date(`${dateStr}T12:00:00`)
-    if (Number.isNaN(date.getTime())) return dateStr
-
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      timeZone: 'Asia/Manila',
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }).formatToParts(date)
-
-    const day = parts.find(p => p.type === 'day')?.value ?? '00'
-    const month = parts.find(p => p.type === 'month')?.value ?? '---'
-    const year = parts.find(p => p.type === 'year')?.value ?? '0000'
-
-    return `${day}-${month}-${year}`
-  } catch {
-    return dateStr
-  }
-}
 
 function calculateTotalHours(clockIn?: string | null, clockOut?: string | null): string {
   if (!clockIn || !clockOut) return '—'
@@ -268,11 +236,11 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
               <div className="mt-3 grid grid-cols-3 gap-2 text-[12px]">
                 <div className="rounded-xl bg-[#F6F4FF] p-2.5">
                   <div className="text-slate-500">In</div>
-                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{timeOnly(e.clock_in)}</div>
+                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{e.clock_in ? shortTime(e.clock_in) : '—'}</div>
                 </div>
                 <div className="rounded-xl bg-[#F6F4FF] p-2.5">
                   <div className="text-slate-500">Out</div>
-                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{e.clock_out ? timeOnly(e.clock_out) : <Ongoing />}</div>
+                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{e.clock_out ? shortTime(e.clock_out) : <Ongoing />}</div>
                 </div>
                 <div className="rounded-xl bg-[#FFF4D6] p-2.5">
                   <div className="text-slate-500">Total</div>
@@ -280,9 +248,14 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-2 text-[12px] text-slate-500">
-                <span>{formatDate(e.date)}</span>
+                <span>{e.date}</span>
                 <ModePill mode={e.mode} />
               </div>
+              {e.quick_clockout_reason && (
+                <div className="mt-2 rounded-xl bg-[#FFF4D6] px-3 py-2 text-[12px] text-[#8A5A00] break-words">
+                  <span className="font-bold">Quick clock-out:</span> {e.quick_clockout_reason}
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -300,6 +273,7 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
                 <th className="p-3 font-semibold">Clock out</th>
                 <th className="p-3 font-semibold">Total hours</th>
                 <th className="p-3 font-semibold">Mode</th>
+                <th className="p-3 font-semibold">Notes</th>
                 <th className="p-3 pr-5 font-semibold">Admin actions</th>
               </tr>
             </thead>
@@ -315,11 +289,18 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
                       </div>
                     </div>
                   </td>
-                  <td className="p-3 tabular-nums">{formatDate(e.date)}</td>
-                  <td className="p-3 tabular-nums">{timeOnly(e.clock_in)}</td>
-                  <td className="p-3 tabular-nums">{e.clock_out ? timeOnly(e.clock_out) : <Ongoing />}</td>
+                  <td className="p-3 tabular-nums">{e.date}</td>
+                  <td className="p-3 tabular-nums">{e.clock_in ? fullTime(e.clock_in) : '—'}</td>
+                  <td className="p-3 tabular-nums">{e.clock_out ? fullTime(e.clock_out) : <Ongoing />}</td>
                   <td className="p-3 font-semibold text-[#14102B] tabular-nums">{calculateTotalHours(e.clock_in, e.clock_out)}</td>
                   <td className="p-3"><ModePill mode={e.mode} /></td>
+                  <td className="p-3 max-w-[240px]">
+                    {e.quick_clockout_reason ? (
+                      <span title={`Quick clock-out: ${e.quick_clockout_reason}`} className="block truncate rounded-lg bg-[#FFF4D6] px-2.5 py-1 text-[12px] font-medium text-[#8A5A00]">
+                        {e.quick_clockout_reason}
+                      </span>
+                    ) : <span className="text-slate-400">—</span>}
+                  </td>
                   <td className="p-3 pr-5"><button onClick={() => openActions(e)} className={btnOpen}>Open</button></td>
                 </tr>
               ))}
@@ -338,7 +319,7 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
                 <div className="w-11 h-11 shrink-0 rounded-full bg-[#4B2BF0] text-white grid place-items-center text-[13px] font-bold">{initials(selected.employee?.full_name)}</div>
                 <div className="min-w-0">
                   <h3 className={`${display.className} text-[18px] font-extrabold text-[#14102B] leading-tight`}>Admin actions</h3>
-                  <div className="text-[12px] text-slate-500 truncate">{name} · {formatDate(selected.date)}</div>
+                  <div className="text-[12px] text-slate-500 truncate">{name} · {selected.date}</div>
                 </div>
               </div>
               <button onClick={closeActions} disabled={busy} className={iconClose} aria-label="Close">✕</button>
@@ -355,6 +336,12 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
                   <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{selected.clock_out ? fullTime(selected.clock_out) : <Ongoing />}</div>
                 </div>
               </div>
+
+              {selected.quick_clockout_reason && (
+                <div className="rounded-xl bg-[#FFF4D6] px-3 py-2 text-[12px] text-[#8A5A00] break-words">
+                  <span className="font-bold">Quick clock-out reason:</span> {selected.quick_clockout_reason}
+                </div>
+              )}
 
               {view === 'menu' && (
                 <div className="space-y-2.5">
