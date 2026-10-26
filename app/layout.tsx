@@ -2,8 +2,8 @@ import './globals.css'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'ChronoKeep - Production Timekeeper',
-  description: 'Tamper-proof timekeeping for remote & onsite teams',
+  title: 'ChronoKeep — Workforce Time & Attendance.',
+  description: 'Track employee attendance, work hours, shifts, and time records in one simple, reliable platform.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

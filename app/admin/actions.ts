@@ -107,3 +107,74 @@ export async function resetEmployeePassword(id: string, newPassword: string, rea
     return null
   })
 }
+
+// Edit an employee's profile. Runs on the server with the service role so the save can't be
+// silently blocked by row-level security, and keeps the sign-in (auth) email in step with the profile email.
+export async function updateEmployee(
+  id: string,
+  f: {
+    full_name: string; email: string; role: string; work_type: string
+    shift_start: string | null; shift_ends: string | null; department: string | null; is_active: boolean
+  }
+): Promise<Result> {
+  return run(async (adminId) => {
+    const email = String(f.email || '').trim().toLowerCase()
+    const fullName = String(f.full_name || '').trim()
+    if (!fullName) return { message: 'Full name is required.' }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { message: 'Enter a valid email address.' }
+    if (f.role !== 'admin' && f.role !== 'employee') return { message: 'Invalid role.' }
+    if (id === adminId && (f.role !== 'admin' || f.is_active === false)) {
+      return { message: "You can't remove your own admin access or deactivate your own account." }
+    }
+
+    const db = createServiceClient()
+    const { data: current } = await db.from('profiles').select('email').eq('id', id).single()
+    if (!current) return { message: 'Employee not found.' }
+
+    // The email they sign in with lives in Supabase Auth. Compare against Auth itself (not just the
+    // profile) so a sign-in email left changed by an earlier failed save doesn't cause a false error.
+    const { data: authData } = await db.auth.admin.getUserById(id)
+    const originalAuthEmail = authData?.user?.email || null
+    const authNeedsChange = String(originalAuthEmail || '').toLowerCase() !== email
+    if (authNeedsChange) {
+      const { error } = await db.auth.admin.updateUserById(id, { email, email_confirm: true })
+      if (error) {
+        return { message: /already|registered|exists/i.test(error.message) ? 'That email address is already in use.' : error.message }
+      }
+    }
+    // Put the sign-in email back if the profile save below doesn't go through, so the two never disagree
+    const undoAuthChange = async () => {
+      if (authNeedsChange && originalAuthEmail) await db.auth.admin.updateUserById(id, { email: originalAuthEmail, email_confirm: true })
+    }
+
+    const { data: saved, error: saveError } = await db
+      .from('profiles')
+      .update({
+        full_name: fullName,
+        email,
+        role: f.role,
+        work_type: f.work_type,
+        shift_start: f.shift_start,
+        shift_ends: f.shift_ends,
+        department: f.department || null,
+        is_active: !!f.is_active,
+      })
+      .eq('id', id)
+      .select('id')
+
+    if (saveError || !saved || saved.length !== 1) {
+      await undoAuthChange()
+      return { message: saveError?.message || 'Nothing was saved. The employee may no longer exist.' }
+    }
+
+    // Read it back to be sure nothing in the database (a trigger or sync rule) changed it again
+    const { data: fresh } = await db.from('profiles').select('email').eq('id', id).single()
+    if (fresh && String(fresh.email || '').toLowerCase() !== email) {
+      await undoAuthChange()
+      return {
+        message: `The database changed the profile email back to "${fresh.email}" right after saving, so nothing was changed. A trigger on public.profiles or auth.users is probably doing this.`,
+      }
+    }
+    return null
+  })
+}

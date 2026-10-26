@@ -1,6 +1,6 @@
 'use client'
-import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Bricolage_Grotesque } from 'next/font/google'
 import { editTimeEntry, forceClockOut, deleteTimeEntry } from '@/app/admin/actions'
 
@@ -18,6 +18,13 @@ type Entry = {
 }
 type Result = { ok: true } | { ok: false; error: string }
 type View = 'menu' | 'edit' | 'force' | 'delete'
+
+type FilterValues = {
+  q: string
+  year: string
+  month: string
+  day: string
+}
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -40,9 +47,14 @@ const iconClose =
   'h-10 w-10 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-sm font-bold hover:bg-[#E2DBFF] transition disabled:opacity-60 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20'
 
 // ---- helpers (all times shown in Manila time) ----
-const fullTime = (iso: string) => new Date(iso).toLocaleString('en-PH', { timeZone: 'Asia/Manila', hour12: true })
 const shortTime = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true })
+
+function formatRecordDate(date: string): string {
+  const [year, month, day] = date.split('-')
+  const monthName = MONTHS[Number(month) - 1]?.slice(0, 3)
+  return year && monthName && day ? `${day}-${monthName}-${year}` : date
+}
 
 function calculateTotalHours(clockIn?: string | null, clockOut?: string | null): string {
   if (!clockIn || !clockOut) return '—'
@@ -88,39 +100,83 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export default function TimeRecords({ entries, today, errorMessage, limit }: {
-  entries: Entry[]; today: string; errorMessage?: string | null; limit: number
+export default function TimeRecords({ entries, today, errorMessage, limit, page, pageCount, totalCount, years, filters }: {
+  entries: Entry[]
+  today: string
+  errorMessage?: string | null
+  limit: number
+  page: number
+  pageCount: number
+  totalCount: number
+  years: string[]
+  filters: FilterValues
 }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const currentParams = useSearchParams()
 
-  // ---- filters ----
-  const [q, setQ] = useState('')
-  const [year, setYear] = useState('')
-  const [month, setMonth] = useState('') // '01'..'12'
-  const [day, setDay] = useState('')     // '01'..'31'
+  const q = filters.q
+  const year = filters.year
+  const month = filters.month
+  const day = filters.day
+  const [searchText, setSearchText] = useState(q)
 
-  const years = useMemo(
-    () => Array.from(new Set(entries.map(e => String(e.date || '').slice(0, 4)).filter(y => /^\d{4}$/.test(y)))).sort().reverse(),
-    [entries]
-  )
+  useEffect(() => {
+    setSearchText(q)
+  }, [q])
 
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    return entries.filter((e) => {
-      const d = String(e.date || '')
-      if (year && d.slice(0, 4) !== year) return false
-      if (month && d.slice(5, 7) !== month) return false
-      if (day && d.slice(8, 10) !== day) return false
-      if (needle) {
-        const hay = `${e.employee?.full_name || ''} ${e.employee?.email || ''}`.toLowerCase()
-        if (!hay.includes(needle)) return false
-      }
-      return true
-    })
-  }, [entries, q, year, month, day])
+  useEffect(() => {
+    if (searchText.trim() === q) return
+
+    const timeout = window.setTimeout(() => {
+      const params = new URLSearchParams(currentParams.toString())
+      const value = searchText.trim()
+      if (value) params.set('q', value)
+      else params.delete('q')
+      params.delete('page')
+      const query = params.toString()
+      router.replace(query ? `${pathname}?${query}` : pathname)
+    }, 300)
+
+    return () => window.clearTimeout(timeout)
+  }, [searchText, q, currentParams, pathname, router])
 
   const filtersActive = !!(q || year || month || day)
-  const clearFilters = () => { setQ(''); setYear(''); setMonth(''); setDay('') }
+  const clearFilters = () => {
+    setSearchText('')
+    const params = new URLSearchParams(currentParams.toString())
+    params.delete('q')
+    params.delete('year')
+    params.delete('month')
+    params.delete('day')
+    params.delete('page')
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
+
+  const onFilterChange = (key: keyof FilterValues, nextValue: string) => {
+    const params = new URLSearchParams(currentParams.toString())
+    if (nextValue) params.set(key, nextValue)
+    else params.delete(key)
+    params.delete('page')
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
+
+  const onPageChange = (nextPage: number) => {
+    const params = new URLSearchParams(currentParams.toString())
+    params.set('page', String(nextPage))
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
+
+  const onPageSizeChange = (nextSize: string) => {
+    const params = new URLSearchParams(currentParams.toString())
+    params.set('size', nextSize)
+    params.delete('page')
+    const query = params.toString()
+    router.push(query ? `${pathname}?${query}` : pathname)
+  }
 
   // ---- admin actions popup ----
   const [selected, setSelected] = useState<Entry | null>(null)
@@ -163,7 +219,7 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
     <section className="rounded-[24px] bg-white shadow-sm overflow-hidden">
       <div className="p-4 sm:p-5 border-b border-[#EEEAFF] flex items-center justify-between gap-3">
         <h2 className={`${display.className} text-[18px] sm:text-[20px] font-bold text-[#14102B]`}>Time records</h2>
-        <span className="text-[12px] text-slate-500">Latest {limit} · Manila time</span>
+        <span className="text-[12px] text-slate-500">{limit} per page</span>
       </div>
 
       {/* Filters */}
@@ -171,37 +227,69 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
         <div className="grid grid-cols-3 sm:grid-cols-[minmax(0,1fr)_110px_150px_100px] gap-2.5">
           <label className="col-span-3 sm:col-span-1 block">
             <span className="block text-[12px] font-semibold text-slate-600 mb-1">Name</span>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name or email" className={filterInput} />
+            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search name or email" className={filterInput} />
           </label>
           <label className="block">
             <span className="block text-[12px] font-semibold text-slate-600 mb-1">Year</span>
-            <select value={year} onChange={(e) => setYear(e.target.value)} className={filterInput}>
+            <select value={year} onChange={(e) => onFilterChange('year', e.target.value)} className={filterInput}>
               <option value="">All</option>
               {years.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="block text-[12px] font-semibold text-slate-600 mb-1">Month</span>
-            <select value={month} onChange={(e) => setMonth(e.target.value)} className={filterInput}>
+            <select value={month} onChange={(e) => onFilterChange('month', e.target.value)} className={filterInput}>
               <option value="">All</option>
               {MONTHS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="block text-[12px] font-semibold text-slate-600 mb-1">Day</span>
-            <select value={day} onChange={(e) => setDay(e.target.value)} className={filterInput}>
+            <select value={day} onChange={(e) => onFilterChange('day', e.target.value)} className={filterInput}>
               <option value="">All</option>
               {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map(d => <option key={d} value={d}>{Number(d)}</option>)}
             </select>
           </label>
         </div>
         <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-slate-500">
-          <span>Showing <span className="font-semibold text-[#14102B]">{filtered.length}</span> of {entries.length} records</span>
+          <span>Showing <span className="font-semibold text-[#14102B]">{entries.length}</span> of {totalCount} records</span>
           {filtersActive && (
             <button onClick={clearFilters} className="font-semibold text-[#4B2BF0] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B2BF0] rounded">
               Clear filters
             </button>
           )}
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-slate-500">
+          <span>Page {page} of {pageCount}</span>
+          <div className="flex items-center gap-2">
+            <label htmlFor="records-page-size" className="font-medium">Rows per page</label>
+            <select
+              id="records-page-size"
+              value={limit}
+              onChange={(event) => onPageSizeChange(event.target.value)}
+              className="h-9 rounded-xl border border-[#E4DFFA] bg-white px-2 text-[#14102B] focus:outline-none focus:border-[#4B2BF0]"
+            >
+              <option value={100}>100</option>
+              <option value={500}>500</option>
+              <option value={1000}>1000</option>
+            </select>
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => onPageChange(page - 1)}
+              className="h-9 px-3 rounded-xl border border-[#E4DFFA] bg-white text-[#4B2BF0] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <button
+              type="button"
+              disabled={page >= pageCount}
+              onClick={() => onPageChange(page + 1)}
+              className="h-9 px-3 rounded-xl border border-[#E4DFFA] bg-white text-[#4B2BF0] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
@@ -214,14 +302,11 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
       {!errorMessage && entries.length === 0 && (
         <div className="p-10 text-center text-[14px] text-slate-500">No time records yet. Entries appear here as soon as employees clock in.</div>
       )}
-      {entries.length > 0 && filtered.length === 0 && (
-        <div className="p-10 text-center text-[14px] text-slate-500">No records match these filters.</div>
-      )}
 
       {/* Mobile: one card per record */}
-      {filtered.length > 0 && (
+      {entries.length > 0 && (
         <ul className="md:hidden divide-y divide-[#EEEAFF]">
-          {filtered.map((e) => (
+          {entries.map((e) => (
             <li key={e.id} className={`p-4 ${e.date === today ? 'bg-[#FAF9FF]' : ''}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -248,7 +333,7 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-2 text-[12px] text-slate-500">
-                <span>{e.date}</span>
+                <span>{formatRecordDate(e.date)}</span>
                 <ModePill mode={e.mode} />
               </div>
               {e.quick_clockout_reason && (
@@ -262,7 +347,7 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
       )}
 
       {/* Desktop: table */}
-      {filtered.length > 0 && (
+      {entries.length > 0 && (
         <div className="hidden md:block overflow-auto max-h-[560px]">
           <table className="w-full text-[13px]">
             <thead className="sticky top-0 bg-[#F6F4FF] text-slate-600 text-left">
@@ -278,7 +363,7 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((e) => (
+              {entries.map((e) => (
                 <tr key={e.id} className={`border-t border-[#EEEAFF] hover:bg-[#FAF9FF] ${e.date === today ? 'bg-[#FAF9FF]' : ''}`}>
                   <td className="p-3 pl-5">
                     <div className="flex items-center gap-3">
@@ -289,9 +374,9 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
                       </div>
                     </div>
                   </td>
-                  <td className="p-3 tabular-nums">{e.date}</td>
-                  <td className="p-3 tabular-nums">{e.clock_in ? fullTime(e.clock_in) : '—'}</td>
-                  <td className="p-3 tabular-nums">{e.clock_out ? fullTime(e.clock_out) : <Ongoing />}</td>
+                  <td className="p-3 tabular-nums">{formatRecordDate(e.date)}</td>
+                  <td className="p-3 tabular-nums">{e.clock_in ? shortTime(e.clock_in) : '—'}</td>
+                  <td className="p-3 tabular-nums">{e.clock_out ? shortTime(e.clock_out) : <Ongoing />}</td>
                   <td className="p-3 font-semibold text-[#14102B] tabular-nums">{calculateTotalHours(e.clock_in, e.clock_out)}</td>
                   <td className="p-3"><ModePill mode={e.mode} /></td>
                   <td className="p-3 max-w-[240px]">
@@ -319,7 +404,7 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
                 <div className="w-11 h-11 shrink-0 rounded-full bg-[#4B2BF0] text-white grid place-items-center text-[13px] font-bold">{initials(selected.employee?.full_name)}</div>
                 <div className="min-w-0">
                   <h3 className={`${display.className} text-[18px] font-extrabold text-[#14102B] leading-tight`}>Admin actions</h3>
-                  <div className="text-[12px] text-slate-500 truncate">{name} · {selected.date}</div>
+                  <div className="text-[12px] text-slate-500 truncate">{name} · {formatRecordDate(selected.date)}</div>
                 </div>
               </div>
               <button onClick={closeActions} disabled={busy} className={iconClose} aria-label="Close">✕</button>
@@ -329,11 +414,11 @@ export default function TimeRecords({ entries, today, errorMessage, limit }: {
               <div className="grid grid-cols-2 gap-2 text-[12px]">
                 <div className="rounded-xl bg-[#F6F4FF] p-2.5">
                   <div className="text-slate-500">Clock in</div>
-                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{selected.clock_in ? fullTime(selected.clock_in) : '—'}</div>
+                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{selected.clock_in ? shortTime(selected.clock_in) : '—'}</div>
                 </div>
                 <div className="rounded-xl bg-[#F6F4FF] p-2.5">
                   <div className="text-slate-500">Clock out</div>
-                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{selected.clock_out ? fullTime(selected.clock_out) : <Ongoing />}</div>
+                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{selected.clock_out ? shortTime(selected.clock_out) : <Ongoing />}</div>
                 </div>
               </div>
 

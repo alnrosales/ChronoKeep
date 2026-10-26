@@ -6,25 +6,110 @@ import EmployeesManager from '@/components/employees-manager'
 import TimeRecords from '@/components/time-records'
 import AdminChangesLog from '@/components/admin-changes-log'
 
+// Always read fresh data. Without this, Next.js can serve cached Supabase responses,
+// so a saved change looks reverted after a browser refresh.
+export const dynamic = 'force-dynamic'
+
 const display = Bricolage_Grotesque({ subsets: ['latin'], weight: ['500', '700', '800'] })
 
-const RECORD_LIMIT = 1000
+const PAGE_SIZES = [100, 500, 1000] as const
+const DEFAULT_PAGE_SIZE = 100
 
-export default async function AdminPage() {
+function normalizeValue(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? ''
+  return value ?? ''
+}
+
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined }
+}) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
   if (profile?.role !== 'admin') redirect('/employee')
 
+  const q = normalizeValue(searchParams?.q).trim()
+  const year = normalizeValue(searchParams?.year)
+  const month = normalizeValue(searchParams?.month)
+  const day = normalizeValue(searchParams?.day)
+  const pageParam = Number(normalizeValue(searchParams?.page) || '1')
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1
+  const requestedPageSize = Number(normalizeValue(searchParams?.size))
+  const pageSize = PAGE_SIZES.find(size => size === requestedPageSize) ?? DEFAULT_PAGE_SIZE
+
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
   const adminDb = createServiceClient()
   const { data: employees } = await adminDb.from('profiles').select('*').order('full_name')
   const { data: activeEmployees } = await adminDb.from('profiles').select('*').eq('is_active', true).order('full_name')
-  const { data: entries, error: entryErr } = await adminDb
-    .from('time_entries')
-    .select('*, employee:profiles!time_entries_employee_id_fkey(full_name, email)')
-    .order('clock_in', { ascending: false })
-    .limit(RECORD_LIMIT)
+
+  const [{ data: oldestEntry, error: oldestEntryError }, { data: newestEntry, error: newestEntryError }] = await Promise.all([
+    adminDb.from('time_entries').select('date').order('date', { ascending: true }).limit(1).maybeSingle(),
+    adminDb.from('time_entries').select('date').order('date', { ascending: false }).limit(1).maybeSingle(),
+  ])
+  const firstYear = Number(String(oldestEntry?.date ?? today).slice(0, 4))
+  const lastYear = Number(String(newestEntry?.date ?? today).slice(0, 4))
+  const availableYears = Array.from(
+    { length: Math.max(0, lastYear - firstYear + 1) },
+    (_, index) => String(lastYear - index)
+  )
+
+  const buildEntryQuery = () => {
+    let query = adminDb
+      .from('time_entries')
+      .select('*, employee:profiles!time_entries_employee_id_fkey!inner(full_name, email)', { count: 'exact' })
+      .order('clock_in', { ascending: false })
+
+    if (year && month && day) {
+      query = query.eq('date', `${year}-${month}-${day}`)
+    } else if (year && month) {
+      const lastDay = new Date(Number(year), Number(month), 0).getDate()
+      query = query.gte('date', `${year}-${month}-01`).lte('date', `${year}-${month}-${lastDay}`)
+    } else if (year) {
+      query = query.gte('date', `${year}-01-01`).lte('date', `${year}-12-31`)
+    } else if (month || day) {
+      const dateFilters = availableYears.flatMap((availableYear) => {
+        if (month && day) return [`date.eq.${availableYear}-${month}-${day}`]
+        if (month) {
+          const lastDay = new Date(Number(availableYear), Number(month), 0).getDate()
+          return [`and(date.gte.${availableYear}-${month}-01,date.lte.${availableYear}-${month}-${lastDay})`]
+        }
+        return Array.from({ length: 12 }, (_, index) => {
+          const monthValue = String(index + 1).padStart(2, '0')
+          return `date.eq.${availableYear}-${monthValue}-${day}`
+        })
+      })
+      if (dateFilters.length) query = query.or(dateFilters.join(','))
+      else query = query.eq('date', '0001-01-01')
+    }
+    if (q) {
+      const pattern = `"%${q.replace(/["\\]/g, '\\$&')}%"`
+      query = query.or(`full_name.ilike.${pattern},email.ilike.${pattern}`, { referencedTable: 'employee' })
+    }
+
+    return query
+  }
+
+  const [
+    { count: filteredEntriesCount },
+    { count: allEntriesCount },
+    { count: todayEntryCount },
+  ] = await Promise.all([
+    buildEntryQuery(),
+    adminDb.from('time_entries').select('id', { count: 'exact', head: true }),
+    adminDb.from('time_entries').select('id', { count: 'exact', head: true }).eq('date', today),
+  ])
+  const filteredEntries = filteredEntriesCount ?? 0
+  const totalEntries = allEntriesCount ?? 0
+  const todayEntries = todayEntryCount ?? 0
+  const presentToday = todayEntries
+  const totalPages = Math.max(1, Math.ceil(filteredEntries / pageSize))
+  const currentPage = Math.min(page, totalPages)
+  const from = (currentPage - 1) * pageSize
+  const to = from + pageSize - 1
+  const { data: entries, error: entryErr } = await buildEntryQuery().range(from, to)
 
   const { data: logs, error: logErr } = await adminDb
     .from('admin_audit_log')
@@ -32,15 +117,13 @@ export default async function AdminPage() {
     .order('created_at', { ascending: false })
     .limit(200)
 
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
-  const todayLabel = new Intl.DateTimeFormat('en-GB', {
+  const todayParts = new Intl.DateTimeFormat('en', {
     timeZone: 'Asia/Manila',
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-  }).format(new Date())
-  const todayEntries = entries?.filter((e: any) => e.date === today) || []
-  const presentToday = new Set(todayEntries.map((e: any) => e.employee_id)).size
+  }).formatToParts(new Date())
+  const todayDisplay = `${todayParts.find(part => part.type === 'day')?.value}-${todayParts.find(part => part.type === 'month')?.value}-${todayParts.find(part => part.type === 'year')?.value}`
 
   return (
     <div className="min-h-screen bg-[#EEEAFF] p-3 sm:p-6">
@@ -55,7 +138,7 @@ export default async function AdminPage() {
               <div className="w-10 h-10 shrink-0 rounded-xl bg-white text-[#4B2BF0] grid place-items-center font-extrabold">C</div>
               <div className="min-w-0">
                 <div className={`${display.className} font-bold text-lg sm:text-xl leading-tight`}>ChronoKeep Admin</div>
-                <div className="text-[12px] sm:text-[13px] text-white/80 truncate">{profile?.full_name} · {todayLabel}</div>
+                <div className="text-[12px] sm:text-[13px] text-white/80 truncate">Welcome {profile?.full_name} · {todayDisplay}</div>
               </div>
             </div>
             <div className="shrink-0"><SignOutButton /></div>
@@ -92,20 +175,30 @@ export default async function AdminPage() {
             <div className="flex items-center gap-2 text-[13px] font-semibold text-[#14102B]">
               <span className="w-2.5 h-2.5 rounded-full bg-[#FFC83D]" aria-hidden /> Shifts today
             </div>
-            <div className={`${display.className} mt-2 text-[32px] sm:text-[40px] font-extrabold leading-none text-[#14102B] tabular-nums`}>{todayEntries.length}</div>
+            <div className={`${display.className} mt-2 text-[32px] sm:text-[40px] font-extrabold leading-none text-[#14102B] tabular-nums`}>{todayEntries}</div>
             <div className="mt-2 text-[12px] text-slate-500">Clock-ins recorded</div>
           </div>
           <div className="rounded-[20px] bg-white p-4 sm:p-5 shadow-sm">
             <div className="flex items-center gap-2 text-[13px] font-semibold text-[#14102B]">
               <span className="w-2.5 h-2.5 rounded-full bg-[#FF5A4E]" aria-hidden /> Total records
             </div>
-            <div className={`${display.className} mt-2 text-[32px] sm:text-[40px] font-extrabold leading-none text-[#14102B] tabular-nums`}>{entries?.length || 0}</div>
-            <div className="mt-2 text-[12px] text-slate-500">Latest {RECORD_LIMIT} loaded</div>
+            <div className={`${display.className} mt-2 text-[32px] sm:text-[40px] font-extrabold leading-none text-[#14102B] tabular-nums`}>{totalEntries}</div>
+            <div className="mt-2 text-[12px] text-slate-500">All time entries</div>
           </div>
         </div>
 
         {/* Time records: filters, table and admin actions */}
-        <TimeRecords entries={(entries || []) as any} today={today} errorMessage={entryErr?.message} limit={RECORD_LIMIT} />
+        <TimeRecords
+          entries={(entries || []) as any}
+          today={today}
+        errorMessage={entryErr?.message ?? oldestEntryError?.message ?? newestEntryError?.message}
+          limit={pageSize}
+          page={currentPage}
+          pageCount={totalPages}
+          totalCount={filteredEntries}
+        years={availableYears}
+        filters={{ q, year, month, day }}
+        />
 
         {/* Immutable log of every admin change */}
         <AdminChangesLog logs={(logs || []) as any} errorMessage={logErr?.message} />

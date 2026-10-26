@@ -172,7 +172,7 @@ export default function LoginPage() {
           <div className="relative flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white text-[#4B2BF0] grid place-items-center font-extrabold">C</div>
             <div className={`${display.className} font-bold text-xl`}>ChronoKeep</div>
-            <span className="text-[11px] px-2 py-1 rounded-full bg-white/20 font-medium">Version 5</span>
+            <span className="text-[11px] px-2 py-1 rounded-full bg-white/20 font-medium">Version 6.1 Beta</span>
           </div>
 
           <div className="relative">

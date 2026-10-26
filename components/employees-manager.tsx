@@ -1,10 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { Bricolage_Grotesque } from 'next/font/google'
-import { deleteEmployee, resetEmployeePassword } from '@/app/admin/actions'
+import { deleteEmployee, resetEmployeePassword, updateEmployee } from '@/app/admin/actions'
 
 const display = Bricolage_Grotesque({ subsets: ['latin'], weight: ['500', '700', '800'] })
 
@@ -100,6 +100,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function EmployeesManager({ employees, trigger }: { employees: Employee[], trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [list, setList] = useState<Employee[]>(employees)
+
+  // When the server sends fresh data (after router.refresh()), show it instead of the old copy
+  useEffect(() => { setList(employees) }, [employees])
   const [editing, setEditing] = useState<Employee | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
 
@@ -383,22 +386,30 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   const handleEdit = async () => {
     if (!editing) return
     setLoading(true)
-    const { error } = await supabase.from('profiles').update({
-      full_name: editing.full_name,
-      email: editing.email,
-      role: editing.role,
-      work_type: editing.work_type,
-      shift_start: editing.shift_start,
-      shift_ends: editing.shift_ends,
-      department: editing.department,
-      is_active: editing.is_active
-    }).eq('id', editing.id)
-    setLoading(false)
-    if (error) {
-      alert(error.message)
-    } else {
-      setList((prev) => prev.map((e) => (e.id === editing.id ? editing : e)))
-      setEditing(null)
+    try {
+      // Saved on the server so it can't be silently blocked, and so the sign-in email changes too
+      const r = await updateEmployee(editing.id, {
+        full_name: editing.full_name,
+        email: editing.email,
+        role: editing.role,
+        work_type: editing.work_type,
+        shift_start: editing.shift_start,
+        shift_ends: editing.shift_ends,
+        department: editing.department,
+        is_active: editing.is_active,
+      })
+      if (r.ok) {
+        const saved = { ...editing, full_name: editing.full_name.trim(), email: editing.email.trim().toLowerCase() }
+        setList((prev) => prev.map((e) => (e.id === editing.id ? saved : e)))
+        setEditing(null)
+        router.refresh()
+      } else {
+        alert(r.error)
+      }
+    } catch (e: any) {
+      alert(e?.message || 'Save failed.')
+    } finally {
+      setLoading(false)
     }
   }
 
