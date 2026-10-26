@@ -18,6 +18,12 @@ Built for **Waho Solutions Inc.** by Alistair Rosales. Current version: **5**.
 - **Admin actions** popup on every record: edit clock in/out, force clock out, delete
 - **Admin changes log** under the table: an append-only history of every admin change
 
+**Employee view (`/employee`)**
+- Time clock: the work mode (Remote or Onsite) locks once you clock in, and clocking out within a minute asks for a reason
+- Quick clock-out reasons are saved in `time_entries.quick_clockout_reason` and shown in the employee's shift history and in the admin Time records
+- **My shift summary**: your own shifts with a From and To date picker, totals and average hours
+- Shift history of the latest 30 records
+
 **Employee manager**
 - Add, edit and delete employees (role, work type, shift times, department, active status)
 - Per-employee working records summary with a month filter and total hours
@@ -49,8 +55,7 @@ Create `.env.local`:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-# Server-only. Use the variable name that lib/supabase/server.ts reads
-# (commonly SUPABASE_SERVICE_ROLE_KEY). Never expose it to the browser.
+# Server-only. Never prefix it with NEXT_PUBLIC_ and never import it in a client component.
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
@@ -61,12 +66,15 @@ The app expects these tables:
 | Table | Columns used |
 | --- | --- |
 | `profiles` | `id` (matches the auth user id), `full_name`, `email`, `role` (`admin` or `employee`), `work_type`, `shift_start`, `shift_ends`, `department`, `is_active` |
-| `time_entries` | `id`, `employee_id` (references `profiles.id`), `date` (Manila work date), `clock_in`, `clock_out`, `mode` |
+| `time_entries` | `id`, `employee_id` (references `profiles.id`), `date` (Manila work date), `clock_in`, `clock_out`, `mode`, `quick_clockout_reason` |
 
 Then run these SQL files **in order** in the Supabase SQL editor:
 
 1. `supabase/admin-audit.sql` creates the `admin_audit_log` table, locks it against updates, deletes and truncates, and adds the edit, force clock out and delete-record functions.
 2. `supabase/admin-audit-employees.sql` lets the log record employee deletions and adds the delete-employee function.
+3. `supabase/admin-audit-password-reset.sql` lets the log record admin password resets.
+4. `supabase/time-entries-quick-clockout.sql` adds the `quick_clockout_reason` column to `time_entries`.
+5. `supabase/lock-down-deletes.sql` drops the old admin delete policy and removes direct delete access for browser roles, so the logged admin actions are the only way to delete.
 
 ### 4. Run
 
@@ -94,6 +102,9 @@ components/
 supabase/
   admin-audit.sql
   admin-audit-employees.sql
+  admin-audit-password-reset.sql
+  time-entries-quick-clockout.sql
+  lock-down-deletes.sql
 lib/supabase/               Supabase browser and server clients
 ```
 
@@ -109,6 +120,9 @@ lib/supabase/               Supabase browser and server clients
 - The service role key (`SUPABASE_SERVICE_ROLE_KEY`) is used only in server code: Server Components (`app/admin/page.tsx`) and Server Actions (`app/admin/actions.ts`). It is never prefixed with `NEXT_PUBLIC_` and no client component reads it. The browser only ever gets the anon key.
 - Add `import 'server-only'` at the top of `lib/supabase/server.ts` (`npm i server-only`). The build then fails if anything marked `'use client'` ever imports it.
 - Every admin action is checked on the server (signed in, role `admin`, account active) before it runs. The admin's identity comes from the session, not from the request.
+- Deletes only go through the logged admin actions. `lock-down-deletes.sql` removes the old "Admin can delete entries" policy and revokes `DELETE` on `time_entries` and `profiles` from browser roles.
+- The old `/api/delete-employee` route has been removed. It accepted any user id with no sign-in check and bypassed the log. Do not add it back.
+- Self-service sign-up code has been removed from the login page. Create users from the employee manager.
 
 ## Known limits
 
