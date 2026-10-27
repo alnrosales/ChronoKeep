@@ -103,6 +103,15 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
 
   // When the server sends fresh data (after router.refresh()), show it instead of the old copy
   useEffect(() => { setList(employees) }, [employees])
+
+  // Employee search (name, email, role, work type or group)
+  const [search, setSearch] = useState('')
+  const query = search.trim().toLowerCase()
+  const visibleList = query
+    ? list.filter((e) =>
+        [e.full_name, e.email, e.role, e.work_type, e.department].filter(Boolean).join(' ').toLowerCase().includes(query)
+      )
+    : list
   const [editing, setEditing] = useState<Employee | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
 
@@ -448,7 +457,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
         <Field label="Shift start"><input type="time" value={ed.shift_start || '09:00'} onChange={(e) => setEditing({ ...ed, shift_start: e.target.value })} className={fieldInput} /></Field>
         <Field label="Shift ends"><input type="time" value={ed.shift_ends || '15:00'} onChange={(e) => setEditing({ ...ed, shift_ends: e.target.value })} className={fieldInput} /></Field>
       </div>
-      <Field label="Department"><input value={ed.department || ''} onChange={(e) => setEditing({ ...ed, department: e.target.value })} className={fieldInput} /></Field>
+      <Field label="Group"><input value={ed.department || ''} onChange={(e) => setEditing({ ...ed, department: e.target.value })} className={fieldInput} /></Field>
       <label className="flex items-center gap-3 rounded-2xl bg-[#F6F4FF] px-4 h-12 text-[14px] font-semibold text-[#14102B]">
         <input type="checkbox" checked={ed.is_active} onChange={(e) => setEditing({ ...ed, is_active: e.target.checked })} className="w-5 h-5 accent-[#4B2BF0]" />
         Active account
@@ -463,7 +472,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
 
   return (
     <>
-      <div onClick={() => setOpen(true)} className="h-full">{trigger}</div>
+      <div onClick={() => { setSearch(''); setOpen(true) }} className="h-full">{trigger}</div>
 
       {/* ===== Employees list (bottom sheet on phones, centered dialog on larger screens) ===== */}
       {open && (
@@ -473,7 +482,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
             <div className="p-4 sm:p-5 border-b border-[#EEEAFF] flex justify-between items-center gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <h2 className={`${display.className} text-[20px] sm:text-[22px] font-extrabold text-[#14102B]`}>Employees</h2>
-                <Chip>{list.length}</Chip>
+                <Chip>{query ? `${visibleList.length} / ${list.length}` : list.length}</Chip>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -498,10 +507,36 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
               </div>
             </div>
 
+            <div className="px-4 sm:px-5 py-3 border-b border-[#EEEAFF] bg-[#FAF9FF]">
+              <div className="relative">
+                <svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+                  <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+                </svg>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by name, email, role or group"
+                  aria-label="Search employees"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="w-full h-11 rounded-xl border-2 border-[#E4DFFA] bg-white pl-10 pr-10 text-[16px] sm:text-[13px] text-[#14102B] placeholder:text-slate-400 focus:outline-none focus:border-[#4B2BF0] focus:ring-4 focus:ring-[#4B2BF0]/15"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full text-[12px] font-bold text-[#4B2BF0] hover:bg-[#EEEAFF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B2BF0]"
+                  >✕</button>
+                )}
+              </div>
+            </div>
+
             <div className="overflow-auto flex-1">
               {/* Mobile: cards */}
               <ul className="md:hidden divide-y divide-[#EEEAFF]">
-                {list.map((emp) => (
+                {visibleList.map((emp) => (
                   <li key={emp.id} className="p-4">
                     {editing?.id === emp.id ? (
                       renderMobileEdit(editing)
@@ -526,7 +561,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                         <div className="mt-3 flex flex-wrap gap-1.5">
                           <Chip>{emp.role}</Chip>
                           <Chip tone="plain">{emp.work_type}</Chip>
-                          <Chip tone="plain">{emp.department || 'No dept'}</Chip>
+                          <Chip tone="plain">{emp.department || 'No group'}</Chip>
                           <Chip tone="amber"><span className="tabular-nums">{emp.shift_start || '09:00'} – {emp.shift_ends || '15:00'}</span></Chip>
                         </div>
                         <div className="mt-3 grid grid-cols-3 gap-2">
@@ -538,7 +573,11 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                     )}
                   </li>
                 ))}
-                {list.length === 0 && <li className="p-10 text-center text-sm text-slate-500">No employees yet. Tap + Add to create one.</li>}
+                {visibleList.length === 0 && (
+                  <li className="p-10 text-center text-sm text-slate-500">
+                    {list.length === 0 ? 'No employees yet. Tap + Add to create one.' : `No employees match "${search.trim()}".`}
+                  </li>
+                )}
               </ul>
 
               {/* Desktop: table */}
@@ -551,13 +590,13 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                     <th className="text-left p-3 w-[9%] font-semibold">Work type</th>
                     <th className="text-left p-3 w-[9%] font-semibold">Shift start</th>
                     <th className="text-left p-3 w-[9%] font-semibold">Shift ends</th>
-                    <th className="text-left p-3 w-[10%] font-semibold">Department</th>
+                    <th className="text-left p-3 w-[10%] font-semibold">Group</th>
                     <th className="text-left p-3 w-[8%] font-semibold">Active</th>
                     <th className="text-left p-3 pr-5 w-[15%] font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((emp) => (
+                  {visibleList.map((emp) => (
                     <tr key={emp.id} className="border-t border-[#EEEAFF] hover:bg-[#FAF9FF]">
                       {editing?.id === emp.id ? (
                         <>
@@ -608,6 +647,13 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                       )}
                     </tr>
                   ))}
+                  {visibleList.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="p-10 text-center text-sm text-slate-500">
+                        {list.length === 0 ? 'No employees yet. Click + Add to create one.' : `No employees match "${search.trim()}".`}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -625,7 +671,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                 <div className="w-11 h-11 shrink-0 rounded-full bg-[#4B2BF0] text-white grid place-items-center text-[13px] font-bold">{initials(summaryEmp.full_name)}</div>
                 <div className="min-w-0">
                   <h2 className={`${display.className} text-[18px] sm:text-[20px] font-bold text-[#14102B] leading-tight`}>{summaryEmp.full_name}&apos;s working records</h2>
-                  <p className="text-[12px] text-slate-500 truncate">{summaryEmp.email} · {summaryEmp.department || 'No dept'} · {summaryEmp.work_type}</p>
+                  <p className="text-[12px] text-slate-500 truncate">{summaryEmp.email} · {summaryEmp.department || 'No group'} · {summaryEmp.work_type}</p>
                 </div>
               </div>
               <button onClick={() => setSummaryEmp(null)} className={iconClose} aria-label="Close">✕</button>
@@ -865,8 +911,8 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                   <input type="time" value={form.shift_ends} onChange={(e) => setForm({ ...form, shift_ends: e.target.value })} className={fieldInput} />
                 </Field>
               </div>
-              <Field label="Department">
-                <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Department" className={fieldInput} />
+              <Field label="Group">
+                <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Group" className={fieldInput} />
               </Field>
             </div>
 
