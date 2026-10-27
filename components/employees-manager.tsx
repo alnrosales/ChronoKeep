@@ -39,11 +39,15 @@ const iconClose =
   'h-10 w-10 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-sm font-bold hover:bg-[#E2DBFF] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20'
 
 const parseShiftTime = (value: string): string | null => {
-  const match = value.trim().match(/^(1[0-2]|0?[1-9]):([0-5]\d)\s*(AM|PM)$/i)
-  if (!match) return null
+  const trimmedValue = value.trim()
+  const twelveHourMatch = trimmedValue.match(/^(1[0-2]|0?[1-9]):([0-5]\d)\s*(AM|PM)$/i)
+  if (twelveHourMatch) {
+    const hour = (Number(twelveHourMatch[1]) % 12) + (twelveHourMatch[3].toUpperCase() === 'PM' ? 12 : 0)
+    return `${String(hour).padStart(2, '0')}:${twelveHourMatch[2]}`
+  }
 
-  const hour = (Number(match[1]) % 12) + (match[3].toUpperCase() === 'PM' ? 12 : 0)
-  return `${String(hour).padStart(2, '0')}:${match[2]}`
+  const storedTimeMatch = trimmedValue.match(/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/)
+  return storedTimeMatch ? `${storedTimeMatch[1]}:${storedTimeMatch[2]}` : null
 }
 
 const formatShiftTime = (value: string | null) => {
