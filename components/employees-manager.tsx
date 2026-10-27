@@ -625,15 +625,15 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
               <table className="hidden md:table w-full table-fixed text-[12px]">
                 <thead className="sticky top-0 bg-[#F6F4FF] text-slate-600">
                   <tr>
-                    <th className="text-left p-2 pl-3 w-[15%] font-semibold">Full name</th>
-                    <th className="text-left p-2 w-[18%] font-semibold">Email</th>
-                    <th className="text-left p-2 w-[8%] font-semibold">Role</th>
-                    <th className="text-left p-2 w-[9%] font-semibold">Work type</th>
-                    <th className="text-left p-2 w-[10%] font-semibold">Shift start</th>
-                    <th className="text-left p-2 w-[10%] font-semibold">Shift ends</th>
-                    <th className="text-left p-2 w-[9%] font-semibold">Group</th>
+                    <th className="text-left p-2 pl-3 w-[22%] font-semibold">Full name</th>
+                    <th className="text-left p-2 w-[16%] font-semibold">Email</th>
+                    <th className="text-left p-2 w-[7%] font-semibold">Role</th>
+                    <th className="text-left p-2 w-[8%] font-semibold">Work type</th>
+                    <th className="text-left p-2 w-[8%] font-semibold">Shift start</th>
+                    <th className="text-left p-2 w-[8%] font-semibold">Shift ends</th>
+                    <th className="text-left p-2 w-[7%] font-semibold">Group</th>
                     <th className="text-left p-2 w-[8%] font-semibold">Active</th>
-                    <th className="text-left p-2 pr-3 w-[13%] font-semibold">Actions</th>
+                    <th className="text-left p-2 pr-3 w-[16%] font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -664,7 +664,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                               <div className="w-8 h-8 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[11px] font-bold">{initials(emp.full_name)}</div>
                               <button
                                 onClick={() => handleOpenSummary(emp)}
-                                className="min-w-0 block truncate text-left font-semibold text-[#14102B] hover:text-[#4B2BF0] hover:underline cursor-pointer focus:outline-none"
+                                className="whitespace-nowrap text-left font-semibold text-[#14102B] hover:text-[#4B2BF0] hover:underline cursor-pointer focus:outline-none"
                                 title="Click to view working records summary"
                               >
                                 {emp.full_name}
