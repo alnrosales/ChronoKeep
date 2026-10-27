@@ -211,7 +211,7 @@ export default function LoginPage() {
               <div className="w-9 h-9 rounded-lg bg-white text-[#4B2BF0] grid place-items-center font-extrabold text-sm">C</div>
               <div>
                 <div className={`${display.className} font-bold text-base leading-tight`}>ChronoKeep</div>
-                <div className="text-[12px] text-white/75 tabular-nums">{bigTime} local · v5</div>
+                <div className="text-[12px] text-white/75 tabular-nums">{bigTime} local · v6.1 Beta</div>
               </div>
             </div>
             <LiveClock now={now} className="w-14 h-14" />
