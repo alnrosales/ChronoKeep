@@ -5,6 +5,10 @@ import ClockCard from '@/components/clock-card'
 import SignOutButton from '@/components/signout-button'
 import ShiftSummary from '@/components/shift-summary'
 
+// Always read fresh data. Without this, Next.js can serve cached Supabase responses,
+// so a saved change looks reverted after a browser refresh.
+export const dynamic = 'force-dynamic'
+
 const display = Bricolage_Grotesque({
   subsets: ['latin'],
   weight: ['500', '700', '800'],

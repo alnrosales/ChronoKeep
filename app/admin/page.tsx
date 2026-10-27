@@ -56,11 +56,11 @@ export default async function AdminPage({
     (_, index) => String(lastYear - index)
   )
 
-  const buildEntryQuery = () => {
-    let query = adminDb
-      .from('time_entries')
-      .select('*, employee:profiles!time_entries_employee_id_fkey!inner(full_name, email)', { count: 'exact' })
-      .order('clock_in', { ascending: false })
+  const entrySelect = '*, employee:profiles!time_entries_employee_id_fkey!inner(full_name, email)'
+
+  // Applies the year/month/day/name filters to a time_entries query
+  const applyEntryFilters = (baseQuery: any) => {
+    let query = baseQuery
 
     if (year && month && day) {
       query = query.eq('date', `${year}-${month}-${day}`)
@@ -92,19 +92,31 @@ export default async function AdminPage({
     return query
   }
 
+  // countOnly = true asks the database for just the number of matching rows (no row data)
+  const buildEntryQuery = (countOnly = false) =>
+    applyEntryFilters(
+      adminDb
+        .from('time_entries')
+        .select(entrySelect, countOnly ? { count: 'exact', head: true } : undefined)
+        .order('clock_in', { ascending: false })
+    )
+
   const [
     { count: filteredEntriesCount },
     { count: allEntriesCount },
     { count: todayEntryCount },
+    { data: todayRows },
   ] = await Promise.all([
-    buildEntryQuery(),
+    buildEntryQuery(true),
     adminDb.from('time_entries').select('id', { count: 'exact', head: true }),
     adminDb.from('time_entries').select('id', { count: 'exact', head: true }).eq('date', today),
+    adminDb.from('time_entries').select('employee_id').eq('date', today),
   ])
   const filteredEntries = filteredEntriesCount ?? 0
   const totalEntries = allEntriesCount ?? 0
   const todayEntries = todayEntryCount ?? 0
-  const presentToday = todayEntries
+  // Unique employees who clocked in today (shifts today can be higher if someone clocks in twice)
+  const presentToday = new Set((todayRows || []).map((r: any) => r.employee_id)).size
   const totalPages = Math.max(1, Math.ceil(filteredEntries / pageSize))
   const currentPage = Math.min(page, totalPages)
   const from = (currentPage - 1) * pageSize
