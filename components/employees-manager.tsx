@@ -581,10 +581,10 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
               </ul>
 
               {/* Desktop: table */}
-              <table className="hidden md:table w-full table-fixed text-[13px]">
+              <table className="hidden md:table w-full text-[13px]">
                 <thead className="sticky top-0 bg-[#F6F4FF] text-slate-600">
                   <tr>
-                    <th className="text-left p-3 pl-5 w-[15%] font-semibold">Full name</th>
+                    <th className="text-left p-3 pl-5 w-[1%] whitespace-nowrap font-semibold">Full name</th>
                     <th className="text-left p-3 w-[15%] font-semibold">Email</th>
                     <th className="text-left p-3 w-[10%] font-semibold">Role</th>
                     <th className="text-left p-3 w-[9%] font-semibold">Work type</th>
@@ -618,12 +618,12 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                         </>
                       ) : (
                         <>
-                          <td className="p-3 pl-5 align-middle break-words">
+                          <td className="p-3 pl-5 align-middle whitespace-nowrap">
                             <div className="flex items-center gap-2.5">
                               <div className="w-8 h-8 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[11px] font-bold">{initials(emp.full_name)}</div>
                               <button
                                 onClick={() => handleOpenSummary(emp)}
-                                className="text-left font-semibold text-[#14102B] hover:text-[#4B2BF0] hover:underline cursor-pointer focus:outline-none"
+                                className="text-left font-semibold whitespace-nowrap text-[#14102B] hover:text-[#4B2BF0] hover:underline cursor-pointer focus:outline-none"
                                 title="Click to view working records summary"
                               >
                                 {emp.full_name}
