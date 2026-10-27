@@ -38,6 +38,27 @@ const btnSmDanger =
 const iconClose =
   'h-10 w-10 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-sm font-bold hover:bg-[#E2DBFF] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20'
 
+const parseShiftTime = (value: string): string | null => {
+  const match = value.trim().match(/^(1[0-2]|0?[1-9]):([0-5]\d)\s*(AM|PM)$/i)
+  if (!match) return null
+
+  const hour = (Number(match[1]) % 12) + (match[3].toUpperCase() === 'PM' ? 12 : 0)
+  return `${String(hour).padStart(2, '0')}:${match[2]}`
+}
+
+const formatShiftTime = (value: string | null) => {
+  if (!value) return ''
+
+  const enteredTime = parseShiftTime(value)
+  const match = value.match(/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/)
+  const timeValue = enteredTime || (match ? `${match[1]}:${match[2]}` : null)
+  if (!timeValue) return value
+
+  const [hours, minutes] = timeValue.split(':').map(Number)
+  const period = hours >= 12 ? 'PM' : 'AM'
+  return `${hours % 12 || 12}:${String(minutes).padStart(2, '0')} ${period}`
+}
+
 const initials = (name?: string | null) =>
   (name || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '?'
 
@@ -126,8 +147,8 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     email: '',
     role: 'employee',
     work_type: 'Hybrid',
-    shift_start: '09:00',
-    shift_ends: '15:00',
+    shift_start: '09:00 AM',
+    shift_ends: '03:00 PM',
     department: '',
     password: ''
   })
@@ -310,6 +331,13 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       return
     }
 
+    const shiftStart = parseShiftTime(form.shift_start)
+    const shiftEnds = parseShiftTime(form.shift_ends)
+    if (!shiftStart || !shiftEnds) {
+      alert('Enter shift times in 12-hour format (for example, 09:00 AM).')
+      return
+    }
+
     setLoading(true)
 
     // Create a temporary client that does NOT persist session
@@ -353,8 +381,8 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       full_name: form.full_name,
       role: form.role,
       work_type: form.work_type,
-      shift_start: form.shift_start,
-      shift_ends: form.shift_ends,
+      shift_start: shiftStart,
+      shift_ends: shiftEnds,
       department: form.department || null,
       is_active: true
     })
@@ -371,8 +399,8 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       email: form.email,
       role: form.role,
       work_type: form.work_type,
-      shift_start: form.shift_start,
-      shift_ends: form.shift_ends,
+      shift_start: shiftStart,
+      shift_ends: shiftEnds,
       department: form.department || null,
       is_active: true
     }
@@ -383,8 +411,8 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       email: '',
       role: 'employee',
       work_type: 'Hybrid',
-      shift_start: '09:00',
-      shift_ends: '15:00',
+      shift_start: '09:00 AM',
+      shift_ends: '03:00 PM',
       department: '',
       password: ''
     })
@@ -394,6 +422,13 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
 
   const handleEdit = async () => {
     if (!editing) return
+    const shiftStart = parseShiftTime(editing.shift_start || '09:00 AM')
+    const shiftEnds = parseShiftTime(editing.shift_ends || '03:00 PM')
+    if (!shiftStart || !shiftEnds) {
+      alert('Enter shift times in 12-hour format (for example, 09:00 AM).')
+      return
+    }
+
     setLoading(true)
     try {
       // Saved on the server so it can't be silently blocked, and so the sign-in email changes too
@@ -402,13 +437,19 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
         email: editing.email,
         role: editing.role,
         work_type: editing.work_type,
-        shift_start: editing.shift_start,
-        shift_ends: editing.shift_ends,
+        shift_start: shiftStart,
+        shift_ends: shiftEnds,
         department: editing.department,
         is_active: editing.is_active,
       })
       if (r.ok) {
-        const saved = { ...editing, full_name: editing.full_name.trim(), email: editing.email.trim().toLowerCase() }
+        const saved = {
+          ...editing,
+          full_name: editing.full_name.trim(),
+          email: editing.email.trim().toLowerCase(),
+          shift_start: shiftStart,
+          shift_ends: shiftEnds,
+        }
         setList((prev) => prev.map((e) => (e.id === editing.id ? saved : e)))
         setEditing(null)
         router.refresh()
@@ -454,8 +495,8 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
         </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Shift start"><input type="time" value={ed.shift_start || '09:00'} onChange={(e) => setEditing({ ...ed, shift_start: e.target.value })} className={fieldInput} /></Field>
-        <Field label="Shift ends"><input type="time" value={ed.shift_ends || '15:00'} onChange={(e) => setEditing({ ...ed, shift_ends: e.target.value })} className={fieldInput} /></Field>
+        <Field label="Shift start"><input type="text" inputMode="text" placeholder="09:00 AM" value={formatShiftTime(ed.shift_start || '09:00')} onChange={(e) => setEditing({ ...ed, shift_start: e.target.value })} className={fieldInput} /></Field>
+        <Field label="Shift ends"><input type="text" inputMode="text" placeholder="03:00 PM" value={formatShiftTime(ed.shift_ends || '15:00')} onChange={(e) => setEditing({ ...ed, shift_ends: e.target.value })} className={fieldInput} /></Field>
       </div>
       <Field label="Group"><input value={ed.department || ''} onChange={(e) => setEditing({ ...ed, department: e.target.value })} className={fieldInput} /></Field>
       <label className="flex items-center gap-3 rounded-2xl bg-[#F6F4FF] px-4 h-12 text-[14px] font-semibold text-[#14102B]">
@@ -492,8 +533,8 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                       email: '',
                       role: 'employee',
                       work_type: 'Hybrid',
-                      shift_start: '09:00',
-                      shift_ends: '15:00',
+                      shift_start: '09:00 AM',
+                      shift_ends: '03:00 PM',
                       department: '',
                       password: ''
                     })
@@ -562,7 +603,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                           <Chip>{emp.role}</Chip>
                           <Chip tone="plain">{emp.work_type}</Chip>
                           <Chip tone="plain">{emp.department || 'No group'}</Chip>
-                          <Chip tone="amber"><span className="tabular-nums">{emp.shift_start || '09:00'} – {emp.shift_ends || '15:00'}</span></Chip>
+                          <Chip tone="amber"><span className="tabular-nums">{formatShiftTime(emp.shift_start || '09:00')} – {formatShiftTime(emp.shift_ends || '15:00')}</span></Chip>
                         </div>
                         <div className="mt-3 grid grid-cols-3 gap-2">
                           <button onClick={() => handleOpenSummary(emp)} className={btnSmGhost}>Records</button>
@@ -581,18 +622,18 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
               </ul>
 
               {/* Desktop: table */}
-              <table className="hidden md:table w-full text-[13px]">
+              <table className="hidden md:table w-full table-fixed text-[12px]">
                 <thead className="sticky top-0 bg-[#F6F4FF] text-slate-600">
                   <tr>
-                    <th className="text-left p-3 pl-5 w-[1%] whitespace-nowrap font-semibold">Full name</th>
-                    <th className="text-left p-3 w-[15%] font-semibold">Email</th>
-                    <th className="text-left p-3 w-[10%] font-semibold">Role</th>
-                    <th className="text-left p-3 w-[9%] font-semibold">Work type</th>
-                    <th className="text-left p-3 w-[9%] font-semibold">Shift start</th>
-                    <th className="text-left p-3 w-[9%] font-semibold">Shift ends</th>
-                    <th className="text-left p-3 w-[10%] font-semibold">Group</th>
-                    <th className="text-left p-3 w-[8%] font-semibold">Active</th>
-                    <th className="text-left p-3 pr-5 w-[15%] font-semibold">Actions</th>
+                    <th className="text-left p-2 pl-3 w-[15%] font-semibold">Full name</th>
+                    <th className="text-left p-2 w-[18%] font-semibold">Email</th>
+                    <th className="text-left p-2 w-[8%] font-semibold">Role</th>
+                    <th className="text-left p-2 w-[9%] font-semibold">Work type</th>
+                    <th className="text-left p-2 w-[10%] font-semibold">Shift start</th>
+                    <th className="text-left p-2 w-[10%] font-semibold">Shift ends</th>
+                    <th className="text-left p-2 w-[9%] font-semibold">Group</th>
+                    <th className="text-left p-2 w-[8%] font-semibold">Active</th>
+                    <th className="text-left p-2 pr-3 w-[13%] font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -600,15 +641,15 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                     <tr key={emp.id} className="border-t border-[#EEEAFF] hover:bg-[#FAF9FF]">
                       {editing?.id === emp.id ? (
                         <>
-                          <td className="p-2 pl-5 align-middle"><input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} className={cellInput} /></td>
-                          <td className="p-2 align-middle"><input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} className={cellInput} /></td>
-                          <td className="p-2 align-middle"><select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })} className={cellInput}><option>employee</option><option>admin</option></select></td>
-                          <td className="p-2 align-middle"><select value={editing.work_type} onChange={(e) => setEditing({ ...editing, work_type: e.target.value })} className={cellInput}><option>Hybrid</option><option>Remote</option><option>Onsite</option></select></td>
-                          <td className="p-2 align-middle"><input type="time" value={editing.shift_start || '09:00'} onChange={(e) => setEditing({ ...editing, shift_start: e.target.value })} className={cellInput} /></td>
-                          <td className="p-2 align-middle"><input type="time" value={editing.shift_ends || '15:00'} onChange={(e) => setEditing({ ...editing, shift_ends: e.target.value })} className={cellInput} /></td>
-                          <td className="p-2 align-middle"><input value={editing.department || ''} onChange={(e) => setEditing({ ...editing, department: e.target.value })} className={cellInput} /></td>
-                          <td className="p-2 align-middle"><input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} className="w-5 h-5 accent-[#4B2BF0]" aria-label="Active" /></td>
-                          <td className="p-2 pr-5 align-middle">
+                          <td className="p-1.5 align-middle"><input value={editing.full_name} onChange={(e) => setEditing({ ...editing, full_name: e.target.value })} className={`${cellInput} px-1.5`} /></td>
+                          <td className="p-1.5 align-middle"><input value={editing.email} onChange={(e) => setEditing({ ...editing, email: e.target.value })} className={`${cellInput} px-1.5`} /></td>
+                          <td className="p-1.5 align-middle"><select value={editing.role} onChange={(e) => setEditing({ ...editing, role: e.target.value })} className={`${cellInput} px-1`}><option>employee</option><option>admin</option></select></td>
+                          <td className="p-1.5 align-middle"><select value={editing.work_type} onChange={(e) => setEditing({ ...editing, work_type: e.target.value })} className={`${cellInput} px-1`}><option>Hybrid</option><option>Remote</option><option>Onsite</option></select></td>
+                          <td className="p-1.5 align-middle"><input type="text" inputMode="text" placeholder="09:00 AM" value={formatShiftTime(editing.shift_start || '09:00')} onChange={(e) => setEditing({ ...editing, shift_start: e.target.value })} className={`${cellInput} px-1`} /></td>
+                          <td className="p-1.5 align-middle"><input type="text" inputMode="text" placeholder="03:00 PM" value={formatShiftTime(editing.shift_ends || '15:00')} onChange={(e) => setEditing({ ...editing, shift_ends: e.target.value })} className={`${cellInput} px-1`} /></td>
+                          <td className="p-1.5 align-middle"><input value={editing.department || ''} onChange={(e) => setEditing({ ...editing, department: e.target.value })} className={`${cellInput} px-1.5`} /></td>
+                          <td className="p-1.5 align-middle"><input type="checkbox" checked={editing.is_active} onChange={(e) => setEditing({ ...editing, is_active: e.target.checked })} className="w-5 h-5 accent-[#4B2BF0]" aria-label="Active" /></td>
+                          <td className="p-1.5 align-middle">
                             <div className="flex flex-wrap gap-1.5">
                               <button onClick={handleEdit} className={btnSmSave}>Save</button>
                               <button onClick={() => setEditing(null)} className={btnSmGhost}>Cancel</button>
@@ -618,27 +659,27 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                         </>
                       ) : (
                         <>
-                          <td className="p-3 pl-5 align-middle whitespace-nowrap">
-                            <div className="flex items-center gap-2.5">
+                          <td className="p-2 pl-3 align-middle">
+                            <div className="flex items-center gap-2">
                               <div className="w-8 h-8 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[11px] font-bold">{initials(emp.full_name)}</div>
                               <button
                                 onClick={() => handleOpenSummary(emp)}
-                                className="text-left font-semibold whitespace-nowrap text-[#14102B] hover:text-[#4B2BF0] hover:underline cursor-pointer focus:outline-none"
+                                className="min-w-0 block truncate text-left font-semibold text-[#14102B] hover:text-[#4B2BF0] hover:underline cursor-pointer focus:outline-none"
                                 title="Click to view working records summary"
                               >
                                 {emp.full_name}
                               </button>
                             </div>
                           </td>
-                          <td className="p-3 align-middle break-words text-slate-600">{emp.email}</td>
-                          <td className="p-3 align-middle"><Chip>{emp.role}</Chip></td>
-                          <td className="p-3 align-middle">{emp.work_type}</td>
-                          <td className="p-3 align-middle tabular-nums">{emp.shift_start || '09:00'}</td>
-                          <td className="p-3 align-middle tabular-nums">{emp.shift_ends || '15:00'}</td>
-                          <td className="p-3 align-middle break-words">{emp.department || '-'}</td>
-                          <td className="p-3 align-middle"><ActivePill active={emp.is_active} /></td>
-                          <td className="p-3 pr-5 align-middle">
-                            <div className="flex gap-1.5">
+                          <td className="p-2 align-middle break-all text-slate-600">{emp.email}</td>
+                          <td className="p-2 align-middle"><Chip>{emp.role}</Chip></td>
+                          <td className="p-2 align-middle break-words">{emp.work_type}</td>
+                          <td className="p-2 align-middle tabular-nums">{formatShiftTime(emp.shift_start || '09:00')}</td>
+                          <td className="p-2 align-middle tabular-nums">{formatShiftTime(emp.shift_ends || '15:00')}</td>
+                          <td className="p-2 align-middle break-words">{emp.department || '-'}</td>
+                          <td className="p-2 align-middle"><ActivePill active={emp.is_active} /></td>
+                          <td className="p-2 align-middle">
+                            <div className="flex flex-wrap gap-1">
                               <button onClick={() => setEditing(emp)} className={btnSmGhost}>Edit</button>
                               <button disabled={loading} onClick={() => openDelete(emp)} className={btnSmDanger}>Delete</button>
                             </div>
@@ -905,10 +946,10 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Shift start">
-                  <input type="time" value={form.shift_start} onChange={(e) => setForm({ ...form, shift_start: e.target.value })} className={fieldInput} />
+                  <input type="text" inputMode="text" placeholder="09:00 AM" value={form.shift_start} onChange={(e) => setForm({ ...form, shift_start: e.target.value })} className={fieldInput} />
                 </Field>
                 <Field label="Shift ends">
-                  <input type="time" value={form.shift_ends} onChange={(e) => setForm({ ...form, shift_ends: e.target.value })} className={fieldInput} />
+                  <input type="text" inputMode="text" placeholder="03:00 PM" value={form.shift_ends} onChange={(e) => setForm({ ...form, shift_ends: e.target.value })} className={fieldInput} />
                 </Field>
               </div>
               <Field label="Group">
