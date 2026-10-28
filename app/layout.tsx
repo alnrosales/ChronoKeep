@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { Analytics } from '@vercel/analytics/next'
 
 export const metadata: Metadata = {
   title: 'ChronoKeep — Workforce Time & Attendance.',
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-[var(--bg)] text-[var(--text)] antialiased">
         {children}
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   )
