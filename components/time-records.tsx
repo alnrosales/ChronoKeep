@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { memo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useRouter } from 'next/navigation'
 import { Bricolage_Grotesque } from 'next/font/google'
 import { editTimeEntry, forceClockOut, deleteTimeEntry } from '@/app/admin/actions'
 
@@ -26,7 +26,17 @@ type FilterValues = {
   day: string
 }
 
+type RecordsData = {
+  entries: Entry[]
+  totalCount: number
+  pageCount: number
+  error: string | null
+}
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const DEFAULT_SIZE = 100
+const SEARCH_DELAY_MS = 200
+const NO_FILTERS: FilterValues = { q: '', year: '', month: '', day: '' }
 
 // ---- style tokens (same palette as the login + admin pages) ----
 const fieldInput =
@@ -47,8 +57,9 @@ const iconClose =
   'h-10 w-10 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-sm font-bold hover:bg-[#E2DBFF] transition disabled:opacity-60 focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20'
 
 // ---- helpers (all times shown in Manila time) ----
-const shortTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true })
+// One formatter for the whole list. Creating a new one per cell (toLocaleTimeString) is slow with hundreds of rows.
+const timeFmt = new Intl.DateTimeFormat('en-PH', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true })
+const shortTime = (iso: string) => timeFmt.format(new Date(iso))
 
 function formatRecordDate(date: string): string {
   const [year, month, day] = date.split('-')
@@ -77,6 +88,34 @@ function toManilaInput(iso?: string | null): string {
   return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`
 }
 
+// Keep the address bar in step with the filters so the page can be refreshed or shared,
+// without asking the server to re-render the whole admin page.
+function syncUrl(f: FilterValues, page: number, size: number) {
+  const params = new URLSearchParams()
+  if (f.q) params.set('q', f.q)
+  if (f.year) params.set('year', f.year)
+  if (f.month) params.set('month', f.month)
+  if (f.day) params.set('day', f.day)
+  if (page > 1) params.set('page', String(page))
+  if (size !== DEFAULT_SIZE) params.set('size', String(size))
+  const qs = params.toString()
+  window.history.replaceState(null, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname)
+}
+
+// Render only the layout that is on screen (the old code rendered every row twice and hid one with CSS).
+// Matches Tailwind's md breakpoint.
+function useIsDesktop() {
+  return useSyncExternalStore(
+    (notify) => {
+      const mq = window.matchMedia('(min-width: 768px)')
+      mq.addEventListener('change', notify)
+      return () => mq.removeEventListener('change', notify)
+    },
+    () => window.matchMedia('(min-width: 768px)').matches,
+    () => true
+  )
+}
+
 function Ongoing() {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E3FBF2] text-[#0B7A55] px-2.5 py-1 text-[12px] font-semibold">
@@ -100,7 +139,89 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export default function TimeRecords({ entries, today, errorMessage, limit, page, pageCount, totalCount, years, filters }: {
+type RowProps = { e: Entry; today: string; onOpen: (e: Entry) => void }
+
+// Memoized rows: typing in the search box or opening a popup doesn't re-render hundreds of unchanged rows.
+const MobileRow = memo(function MobileRow({ e, today, onOpen }: RowProps) {
+  return (
+    <li className={`p-4 ${e.date === today ? 'bg-[#FAF9FF]' : ''}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[13px] font-bold">{initials(e.employee?.full_name)}</div>
+          <div className="min-w-0">
+            <div className="font-semibold text-[14px] text-[#14102B] truncate">{e.employee?.full_name || String(e.employee_id).slice(0, 8)}</div>
+            <div className="text-[12px] text-slate-500 truncate">{e.employee?.email}</div>
+          </div>
+        </div>
+        <button onClick={() => onOpen(e)} className={btnOpen}>Open</button>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-[12px]">
+        <div className="rounded-xl bg-[#F6F4FF] p-2.5">
+          <div className="text-slate-500">In</div>
+          <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{e.clock_in ? shortTime(e.clock_in) : '—'}</div>
+        </div>
+        <div className="rounded-xl bg-[#F6F4FF] p-2.5">
+          <div className="text-slate-500">Out</div>
+          <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{e.clock_out ? shortTime(e.clock_out) : <Ongoing />}</div>
+        </div>
+        <div className="rounded-xl bg-[#FFF4D6] p-2.5">
+          <div className="text-slate-500">Total</div>
+          <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{calculateTotalHours(e.clock_in, e.clock_out)}</div>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-2 text-[12px] text-slate-500">
+        <span>{formatRecordDate(e.date)}</span>
+        <ModePill mode={e.mode} />
+      </div>
+      {e.quick_clockout_reason && (
+        <div className="mt-2 rounded-xl bg-[#FFF4D6] px-3 py-2 text-[12px] text-[#8A5A00] break-words">
+          <span className="font-bold">Quick clock-out:</span> {e.quick_clockout_reason}
+        </div>
+      )}
+    </li>
+  )
+})
+
+const DesktopRow = memo(function DesktopRow({ e, today, onOpen }: RowProps) {
+  return (
+    <tr className={`border-t border-[#EEEAFF] hover:bg-[#FAF9FF] ${e.date === today ? 'bg-[#FAF9FF]' : ''}`}>
+      <td className="p-3 pl-5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[12px] font-bold">{initials(e.employee?.full_name)}</div>
+          <div>
+            <div className="font-semibold text-[#14102B]">{e.employee?.full_name || String(e.employee_id).slice(0, 8)}</div>
+            <div className="text-[12px] text-slate-500">{e.employee?.email}</div>
+          </div>
+        </div>
+      </td>
+      <td className="p-3 tabular-nums">{formatRecordDate(e.date)}</td>
+      <td className="p-3 tabular-nums">{e.clock_in ? shortTime(e.clock_in) : '—'}</td>
+      <td className="p-3 tabular-nums">{e.clock_out ? shortTime(e.clock_out) : <Ongoing />}</td>
+      <td className="p-3 font-semibold text-[#14102B] tabular-nums">{calculateTotalHours(e.clock_in, e.clock_out)}</td>
+      <td className="p-3"><ModePill mode={e.mode} /></td>
+      <td className="p-3 max-w-[240px]">
+        {e.quick_clockout_reason ? (
+          <span title={`Quick clock-out: ${e.quick_clockout_reason}`} className="block truncate rounded-lg bg-[#FFF4D6] px-2.5 py-1 text-[12px] font-medium text-[#8A5A00]">
+            {e.quick_clockout_reason}
+          </span>
+        ) : <span className="text-slate-400">—</span>}
+      </td>
+      <td className="p-3 pr-5"><button onClick={() => onOpen(e)} className={btnOpen}>Open</button></td>
+    </tr>
+  )
+})
+
+export default function TimeRecords({
+  entries: initialEntries,
+  today,
+  errorMessage,
+  limit: initialSize,
+  page: initialPage,
+  pageCount: initialPageCount,
+  totalCount: initialTotal,
+  years,
+  filters: initialFilters,
+}: {
   entries: Entry[]
   today: string
   errorMessage?: string | null
@@ -112,70 +233,114 @@ export default function TimeRecords({ entries, today, errorMessage, limit, page,
   filters: FilterValues
 }) {
   const router = useRouter()
-  const pathname = usePathname()
-  const currentParams = useSearchParams()
+  const isDesktop = useIsDesktop()
 
-  const q = filters.q
-  const year = filters.year
-  const month = filters.month
-  const day = filters.day
-  const [searchText, setSearchText] = useState(q)
+  // The server renders the first page. From then on the filters live here and results come from the API.
+  const [applied, setApplied] = useState<FilterValues>(initialFilters)
+  const [searchText, setSearchText] = useState(initialFilters.q)
+  const [pageNo, setPageNo] = useState(initialPage)
+  const [size, setSize] = useState(initialSize)
+  const [data, setData] = useState<RecordsData>({
+    entries: initialEntries,
+    totalCount: initialTotal,
+    pageCount: initialPageCount,
+    error: errorMessage ?? null,
+  })
+  const [loading, setLoading] = useState(false)
 
+  const abortRef = useRef<AbortController | null>(null)
+  const key = JSON.stringify([applied, pageNo, size])
+  const loadedKey = useRef(key)
+  const latest = useRef({ applied, pageNo, size })
+  latest.current = { applied, pageNo, size }
+
+  // Fetch one page. A newer request cancels the one still in flight, so a slow old answer can never
+  // overwrite a newer one, and the server stops working on results nobody will see.
+  const load = useCallback(async (f: FilterValues, p: number, s: number) => {
+    abortRef.current?.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (f.q) params.set('q', f.q)
+      if (f.year) params.set('year', f.year)
+      if (f.month) params.set('month', f.month)
+      if (f.day) params.set('day', f.day)
+      params.set('page', String(p))
+      params.set('size', String(s))
+      const res = await fetch(`/api/admin/time-records?${params}`, { signal: ctrl.signal, cache: 'no-store' })
+      if (!res.ok) throw new Error(res.status === 401 ? 'Your session has expired. Please sign in again.' : 'Search failed. Please try again.')
+      const d = await res.json()
+      if (ctrl.signal.aborted) return
+      setData({ entries: d.entries ?? [], totalCount: d.totalCount ?? 0, pageCount: d.pageCount ?? 1, error: d.error ?? null })
+      if (typeof d.page === 'number' && d.page !== p) {
+        // The server moved us to the last page that exists
+        loadedKey.current = JSON.stringify([f, d.page, s])
+        setPageNo(d.page)
+        syncUrl(f, d.page, s)
+      }
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return
+      setData((prev) => ({ ...prev, error: e?.message || 'Search failed. Please try again.' }))
+    } finally {
+      if (abortRef.current === ctrl) setLoading(false)
+    }
+  }, [])
+
+  // Cancel anything still running when the page is left
+  useEffect(() => () => abortRef.current?.abort(), [])
+
+  // Typing: wait a moment after the last keystroke, then search. (Enter searches immediately.)
   useEffect(() => {
-    setSearchText(q)
-  }, [q])
+    const value = searchText.trim()
+    if (value === applied.q) return
+    const timer = window.setTimeout(() => {
+      setApplied((f) => ({ ...f, q: value }))
+      setPageNo(1)
+    }, SEARCH_DELAY_MS)
+    return () => window.clearTimeout(timer)
+  }, [searchText, applied.q])
 
+  // Any change to the filters, page or page size fetches new results
   useEffect(() => {
-    if (searchText.trim() === q) return
+    if (key === loadedKey.current) return
+    loadedKey.current = key
+    syncUrl(applied, pageNo, size)
+    load(applied, pageNo, size)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
 
-    const timeout = window.setTimeout(() => {
-      const params = new URLSearchParams(currentParams.toString())
-      const value = searchText.trim()
-      if (value) params.set('q', value)
-      else params.delete('q')
-      params.delete('page')
-      const query = params.toString()
-      router.replace(query ? `${pathname}?${query}` : pathname)
-    }, 300)
+  const reload = useCallback(() => {
+    const { applied: f, pageNo: p, size: s } = latest.current
+    load(f, p, s)
+  }, [load])
 
-    return () => window.clearTimeout(timeout)
-  }, [searchText, q, currentParams, pathname, router])
+  const filtersActive = !!(applied.q || applied.year || applied.month || applied.day)
 
-  const filtersActive = !!(q || year || month || day)
   const clearFilters = () => {
     setSearchText('')
-    const params = new URLSearchParams(currentParams.toString())
-    params.delete('q')
-    params.delete('year')
-    params.delete('month')
-    params.delete('day')
-    params.delete('page')
-    const query = params.toString()
-    router.push(query ? `${pathname}?${query}` : pathname)
+    setApplied(NO_FILTERS)
+    setPageNo(1)
   }
 
-  const onFilterChange = (key: keyof FilterValues, nextValue: string) => {
-    const params = new URLSearchParams(currentParams.toString())
-    if (nextValue) params.set(key, nextValue)
-    else params.delete(key)
-    params.delete('page')
-    const query = params.toString()
-    router.push(query ? `${pathname}?${query}` : pathname)
+  const onFilterChange = (name: keyof FilterValues, value: string) => {
+    setApplied((f) => ({ ...f, [name]: value }))
+    setPageNo(1)
   }
 
-  const onPageChange = (nextPage: number) => {
-    const params = new URLSearchParams(currentParams.toString())
-    params.set('page', String(nextPage))
-    const query = params.toString()
-    router.push(query ? `${pathname}?${query}` : pathname)
+  const onSearchKeyDown = (ev: React.KeyboardEvent<HTMLInputElement>) => {
+    if (ev.key !== 'Enter') return
+    const value = searchText.trim()
+    if (value !== applied.q) {
+      setApplied((f) => ({ ...f, q: value }))
+      setPageNo(1)
+    }
   }
 
-  const onPageSizeChange = (nextSize: string) => {
-    const params = new URLSearchParams(currentParams.toString())
-    params.set('size', nextSize)
-    params.delete('page')
-    const query = params.toString()
-    router.push(query ? `${pathname}?${query}` : pathname)
+  const onPageSizeChange = (next: string) => {
+    setSize(Number(next))
+    setPageNo(1)
   }
 
   // ---- admin actions popup ----
@@ -187,10 +352,10 @@ export default function TimeRecords({ entries, today, errorMessage, limit, page,
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
-  const openActions = (e: Entry) => {
+  const openActions = useCallback((e: Entry) => {
     setSelected(e); setView('menu'); setReason(''); setErr('')
     setClockIn(toManilaInput(e.clock_in)); setClockOut(toManilaInput(e.clock_out))
-  }
+  }, [])
   const closeActions = () => { if (!busy) setSelected(null) }
   const goto = (v: View) => { setView(v); setErr(''); setReason('') }
 
@@ -198,7 +363,13 @@ export default function TimeRecords({ entries, today, errorMessage, limit, page,
     setBusy(true); setErr('')
     try {
       const r = await fn()
-      if (r.ok) { setSelected(null); router.refresh() } else { setErr(r.error) }
+      if (r.ok) {
+        setSelected(null)
+        router.refresh() // stats and the admin changes log
+        reload() // the records list (it is no longer part of the server render)
+      } else {
+        setErr(r.error)
+      }
     } catch (e: any) {
       setErr(e?.message || 'Something went wrong.')
     } finally {
@@ -216,10 +387,13 @@ export default function TimeRecords({ entries, today, errorMessage, limit, page,
   const name = selected?.employee?.full_name || (selected ? String(selected.employee_id).slice(0, 8) : '')
 
   return (
-    <section className="rounded-[24px] bg-white shadow-sm overflow-hidden">
+    <section className="rounded-[24px] bg-white shadow-sm overflow-hidden" aria-busy={loading}>
+      {/* Thin progress bar while a search is running */}
+      <div className={`h-0.5 bg-[#4B2BF0] transition-opacity duration-150 ${loading ? 'opacity-100 motion-safe:animate-pulse' : 'opacity-0'}`} aria-hidden />
+
       <div className="p-4 sm:p-5 border-b border-[#EEEAFF] flex items-center justify-between gap-3">
         <h2 className={`${display.className} text-[18px] sm:text-[20px] font-bold text-[#14102B]`}>Time records</h2>
-        <span className="text-[12px] text-slate-500">{limit} per page</span>
+        <span className="text-[12px] text-slate-500">{size} per page</span>
       </div>
 
       {/* Filters */}
@@ -227,45 +401,53 @@ export default function TimeRecords({ entries, today, errorMessage, limit, page,
         <div className="grid grid-cols-3 sm:grid-cols-[minmax(0,1fr)_110px_150px_100px] gap-2.5">
           <label className="col-span-3 sm:col-span-1 block">
             <span className="block text-[12px] font-semibold text-slate-600 mb-1">Name</span>
-            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Search name or email" className={filterInput} />
+            <input
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              onKeyDown={onSearchKeyDown}
+              placeholder="Search name or email"
+              autoComplete="off"
+              spellCheck={false}
+              className={filterInput}
+            />
           </label>
           <label className="block">
             <span className="block text-[12px] font-semibold text-slate-600 mb-1">Year</span>
-            <select value={year} onChange={(e) => onFilterChange('year', e.target.value)} className={filterInput}>
+            <select value={applied.year} onChange={(e) => onFilterChange('year', e.target.value)} className={filterInput}>
               <option value="">All</option>
               {years.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="block text-[12px] font-semibold text-slate-600 mb-1">Month</span>
-            <select value={month} onChange={(e) => onFilterChange('month', e.target.value)} className={filterInput}>
+            <select value={applied.month} onChange={(e) => onFilterChange('month', e.target.value)} className={filterInput}>
               <option value="">All</option>
               {MONTHS.map((m, i) => <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="block text-[12px] font-semibold text-slate-600 mb-1">Day</span>
-            <select value={day} onChange={(e) => onFilterChange('day', e.target.value)} className={filterInput}>
+            <select value={applied.day} onChange={(e) => onFilterChange('day', e.target.value)} className={filterInput}>
               <option value="">All</option>
               {Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')).map(d => <option key={d} value={d}>{Number(d)}</option>)}
             </select>
           </label>
         </div>
         <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-slate-500">
-          <span>Showing <span className="font-semibold text-[#14102B]">{entries.length}</span> of {totalCount} records</span>
-          {filtersActive && (
+          <span>Showing <span className="font-semibold text-[#14102B]">{data.entries.length}</span> of {data.totalCount} records</span>
+          {(filtersActive || searchText) && (
             <button onClick={clearFilters} className="font-semibold text-[#4B2BF0] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B2BF0] rounded">
               Clear filters
             </button>
           )}
         </div>
         <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-slate-500">
-          <span>Page {page} of {pageCount}</span>
+          <span>Page {pageNo} of {data.pageCount}</span>
           <div className="flex items-center gap-2">
             <label htmlFor="records-page-size" className="font-medium">Rows per page</label>
             <select
               id="records-page-size"
-              value={limit}
+              value={size}
               onChange={(event) => onPageSizeChange(event.target.value)}
               className="h-9 rounded-xl border border-[#E4DFFA] bg-white px-2 text-[#14102B] focus:outline-none focus:border-[#4B2BF0]"
             >
@@ -275,16 +457,16 @@ export default function TimeRecords({ entries, today, errorMessage, limit, page,
             </select>
             <button
               type="button"
-              disabled={page <= 1}
-              onClick={() => onPageChange(page - 1)}
+              disabled={pageNo <= 1}
+              onClick={() => setPageNo(pageNo - 1)}
               className="h-9 px-3 rounded-xl border border-[#E4DFFA] bg-white text-[#4B2BF0] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Prev
             </button>
             <button
               type="button"
-              disabled={page >= pageCount}
-              onClick={() => onPageChange(page + 1)}
+              disabled={pageNo >= data.pageCount}
+              onClick={() => setPageNo(pageNo + 1)}
               className="h-9 px-3 rounded-xl border border-[#E4DFFA] bg-white text-[#4B2BF0] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Next
@@ -293,106 +475,52 @@ export default function TimeRecords({ entries, today, errorMessage, limit, page,
         </div>
       </div>
 
-      {errorMessage && (
+      {data.error && (
         <div role="alert" className="m-4 text-[13px] text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] p-3 rounded-2xl">
-          Couldn&apos;t load time records: {errorMessage}
+          Couldn&apos;t load time records: {data.error}
         </div>
       )}
 
-      {!errorMessage && entries.length === 0 && (
-        <div className="p-10 text-center text-[14px] text-slate-500">No time records yet. Entries appear here as soon as employees clock in.</div>
+      {!data.error && data.entries.length === 0 && !loading && (
+        <div className="p-10 text-center text-[14px] text-slate-500">
+          {filtersActive
+            ? 'No time records match these filters.'
+            : 'No time records yet. Entries appear here as soon as employees clock in.'}
+        </div>
       )}
 
-      {/* Mobile: one card per record */}
-      {entries.length > 0 && (
-        <ul className="md:hidden divide-y divide-[#EEEAFF]">
-          {entries.map((e) => (
-            <li key={e.id} className={`p-4 ${e.date === today ? 'bg-[#FAF9FF]' : ''}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[13px] font-bold">{initials(e.employee?.full_name)}</div>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-[14px] text-[#14102B] truncate">{e.employee?.full_name || String(e.employee_id).slice(0, 8)}</div>
-                    <div className="text-[12px] text-slate-500 truncate">{e.employee?.email}</div>
-                  </div>
-                </div>
-                <button onClick={() => openActions(e)} className={btnOpen}>Open</button>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-[12px]">
-                <div className="rounded-xl bg-[#F6F4FF] p-2.5">
-                  <div className="text-slate-500">In</div>
-                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{e.clock_in ? shortTime(e.clock_in) : '—'}</div>
-                </div>
-                <div className="rounded-xl bg-[#F6F4FF] p-2.5">
-                  <div className="text-slate-500">Out</div>
-                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{e.clock_out ? shortTime(e.clock_out) : <Ongoing />}</div>
-                </div>
-                <div className="rounded-xl bg-[#FFF4D6] p-2.5">
-                  <div className="text-slate-500">Total</div>
-                  <div className="mt-0.5 font-semibold text-[#14102B] tabular-nums">{calculateTotalHours(e.clock_in, e.clock_out)}</div>
-                </div>
-              </div>
-              <div className="mt-3 flex items-center gap-2 text-[12px] text-slate-500">
-                <span>{formatRecordDate(e.date)}</span>
-                <ModePill mode={e.mode} />
-              </div>
-              {e.quick_clockout_reason && (
-                <div className="mt-2 rounded-xl bg-[#FFF4D6] px-3 py-2 text-[12px] text-[#8A5A00] break-words">
-                  <span className="font-bold">Quick clock-out:</span> {e.quick_clockout_reason}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Results stay on screen (slightly dimmed) while the next ones load, so the list never flashes empty */}
+      <div className={`transition-opacity duration-150 ${loading ? 'opacity-60' : 'opacity-100'}`}>
+        {/* Mobile: one card per record */}
+        {data.entries.length > 0 && !isDesktop && (
+          <ul className="divide-y divide-[#EEEAFF]">
+            {data.entries.map((e) => <MobileRow key={e.id} e={e} today={today} onOpen={openActions} />)}
+          </ul>
+        )}
 
-      {/* Desktop: table */}
-      {entries.length > 0 && (
-        <div className="hidden md:block overflow-auto max-h-[560px]">
-          <table className="w-full text-[13px]">
-            <thead className="sticky top-0 bg-[#F6F4FF] text-slate-600 text-left">
-              <tr>
-                <th className="p-3 pl-5 font-semibold">Employee</th>
-                <th className="p-3 font-semibold">Date</th>
-                <th className="p-3 font-semibold">Clock in</th>
-                <th className="p-3 font-semibold">Clock out</th>
-                <th className="p-3 font-semibold">Total hours</th>
-                <th className="p-3 font-semibold">Mode</th>
-                <th className="p-3 font-semibold">Notes</th>
-                <th className="p-3 pr-5 font-semibold">Admin actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((e) => (
-                <tr key={e.id} className={`border-t border-[#EEEAFF] hover:bg-[#FAF9FF] ${e.date === today ? 'bg-[#FAF9FF]' : ''}`}>
-                  <td className="p-3 pl-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[12px] font-bold">{initials(e.employee?.full_name)}</div>
-                      <div>
-                        <div className="font-semibold text-[#14102B]">{e.employee?.full_name || String(e.employee_id).slice(0, 8)}</div>
-                        <div className="text-[12px] text-slate-500">{e.employee?.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-3 tabular-nums">{formatRecordDate(e.date)}</td>
-                  <td className="p-3 tabular-nums">{e.clock_in ? shortTime(e.clock_in) : '—'}</td>
-                  <td className="p-3 tabular-nums">{e.clock_out ? shortTime(e.clock_out) : <Ongoing />}</td>
-                  <td className="p-3 font-semibold text-[#14102B] tabular-nums">{calculateTotalHours(e.clock_in, e.clock_out)}</td>
-                  <td className="p-3"><ModePill mode={e.mode} /></td>
-                  <td className="p-3 max-w-[240px]">
-                    {e.quick_clockout_reason ? (
-                      <span title={`Quick clock-out: ${e.quick_clockout_reason}`} className="block truncate rounded-lg bg-[#FFF4D6] px-2.5 py-1 text-[12px] font-medium text-[#8A5A00]">
-                        {e.quick_clockout_reason}
-                      </span>
-                    ) : <span className="text-slate-400">—</span>}
-                  </td>
-                  <td className="p-3 pr-5"><button onClick={() => openActions(e)} className={btnOpen}>Open</button></td>
+        {/* Desktop: table */}
+        {data.entries.length > 0 && isDesktop && (
+          <div className="overflow-auto max-h-[560px]">
+            <table className="w-full text-[13px]">
+              <thead className="sticky top-0 bg-[#F6F4FF] text-slate-600 text-left">
+                <tr>
+                  <th className="p-3 pl-5 font-semibold">Employee</th>
+                  <th className="p-3 font-semibold">Date</th>
+                  <th className="p-3 font-semibold">Clock in</th>
+                  <th className="p-3 font-semibold">Clock out</th>
+                  <th className="p-3 font-semibold">Total hours</th>
+                  <th className="p-3 font-semibold">Mode</th>
+                  <th className="p-3 font-semibold">Notes</th>
+                  <th className="p-3 pr-5 font-semibold">Admin actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {data.entries.map((e) => <DesktopRow key={e.id} e={e} today={today} onOpen={openActions} />)}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* ===== Admin actions popup (bottom sheet on phones, dialog on larger screens) ===== */}
       {selected && (
