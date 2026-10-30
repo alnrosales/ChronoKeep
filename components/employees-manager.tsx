@@ -208,55 +208,44 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
   const [resetDone, setResetDone] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  // Helper to format date as dd-mmm-yy in UTC+8
+  // Helper to format date as dd-mmm-yy in Philippines time (Asia/Manila, UTC+8)
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-'
-    try {
-      const d = new Date(dateStr)
-      if (isNaN(d.getTime())) return dateStr
-      const utc8Date = new Date(d.getTime() + (8 * 60 - d.getTimezoneOffset()) * 60000)
-      const day = String(utc8Date.getUTCDate()).padStart(2, '0')
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      const month = months[utc8Date.getUTCMonth()]
-      const year = String(utc8Date.getUTCFullYear()).slice(-2)
-      return `${day}-${month}-${year}`
-    } catch {
-      return dateStr
-    }
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+    // Plain work dates (YYYY-MM-DD) are already Manila dates, so don't convert them
+    const plain = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (plain) return `${plain[3]}-${months[Number(plain[2]) - 1]}-${plain[1].slice(-2)}`
+
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return dateStr
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Manila', day: '2-digit', month: 'numeric', year: 'numeric',
+    }).formatToParts(d)
+    const get = (t: string) => parts.find(p => p.type === t)?.value ?? ''
+    return `${get('day')}-${months[Number(get('month')) - 1]}-${get('year').slice(-2)}`
   }
 
-  // Helper to format time to 12-hour format in UTC+8
+  // Helper to format time to 12-hour format in Philippines time (Asia/Manila, UTC+8)
   const formatTime12hr = (timeStr: string) => {
     if (!timeStr) return '-'
-    try {
-      let hours = 0, minutes = 0
-      if (timeStr.includes('T')) {
-        const d = new Date(timeStr)
-        if (!isNaN(d.getTime())) {
-          const utc8Date = new Date(d.getTime() + (8 * 60 - d.getTimezoneOffset()) * 60000)
-          hours = utc8Date.getUTCHours()
-          minutes = utc8Date.getUTCMinutes()
-        } else {
-          return timeStr
-        }
-      } else {
-        const parts = timeStr.split(':')
-        if (parts.length >= 2) {
-          hours = parseInt(parts[0], 10)
-          minutes = parseInt(parts[1], 10)
-        } else {
-          return timeStr
-        }
-      }
 
-      const ampm = hours >= 12 ? 'PM' : 'AM'
-      hours = hours % 12
-      hours = hours ? hours : 12
-      const minStr = String(minutes).padStart(2, '0')
-      return `${hours}:${minStr} ${ampm}`
-    } catch {
-      return timeStr
+    // Full timestamps (clock_in / clock_out) are converted to Manila time
+    if (timeStr.includes('T')) {
+      const d = new Date(timeStr)
+      if (isNaN(d.getTime())) return timeStr
+      return d
+        .toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit', hour12: true })
+        .replace(/\u202f/g, ' ')
     }
+
+    // Plain "HH:MM[:SS]" values have no timezone, so just format them as 12-hour
+    const parts = timeStr.split(':')
+    if (parts.length < 2) return timeStr
+    const h = parseInt(parts[0], 10)
+    const m = parseInt(parts[1], 10)
+    if (isNaN(h) || isNaN(m)) return timeStr
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`
   }
 
   // Helper function to calculate working hours between clock_in and clock_out
@@ -839,9 +828,12 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
             </div>
 
             <div className="p-4 sm:px-6 border-t border-[#EEEAFF] flex justify-between items-center gap-3 text-[12px] text-slate-500">
-              <div className="flex flex-col sm:flex-row sm:gap-4">
-                <span>Records: <span className="font-semibold text-[#14102B]">{filteredLogs.length}</span></span>
-                <span>Total hours: <span className="font-semibold text-[#14102B] tabular-nums">{filteredHours.toFixed(2)} hrs</span></span>
+              <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col sm:flex-row sm:gap-4">
+                  <span>Records: <span className="font-semibold text-[#14102B]">{filteredLogs.length}</span></span>
+                  <span>Total hours: <span className="font-semibold text-[#14102B] tabular-nums">{filteredHours.toFixed(2)} hrs</span></span>
+                </div>
+                <span className="text-[11px] text-slate-400">All times in Philippines time (UTC+8)</span>
               </div>
               <button onClick={() => setSummaryEmp(null)} className={btnGhost}>Close</button>
             </div>
