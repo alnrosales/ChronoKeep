@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Bricolage_Grotesque } from 'next/font/google'
 import { createEmployee, deleteEmployee, resetEmployeePassword, updateEmployee } from '@/app/admin/actions'
 
-// FIX 1: was weight: ['500','700','800'] -> breaks next/font. Must be outside component + display: 'swap'
 const display = Bricolage_Grotesque({ subsets: ['latin'], display: 'swap' })
 
 type Employee = {
@@ -20,21 +19,20 @@ type Employee = {
   is_active: boolean
 }
 
-// ---- shared style tokens (match the login + admin pages) ----
 const fieldInput =
-  'w-full h-12 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-4 text- sm:text-sm text-[#14102B] placeholder:text-slate-400 transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15'
+  'w-full h-12 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-4 text-[16px] sm:text-sm text-[#14102B] placeholder:text-slate-400 transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15'
 const cellInput =
-  'w-full h-10 rounded-xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-2.5 text- md:text- text-[#14102B] focus:outline-none focus:border-[#4B2BF0] focus:bg-white'
+  'w-full h-10 rounded-xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-2.5 text-[16px] md:text-[13px] text-[#14102B] focus:outline-none focus:border-[#4B2BF0] focus:bg-white'
 const btnPrimary =
   'h-11 px-5 rounded-2xl bg-[#FF5A4E] text-white text-sm font-bold shadow-[0_10px_24px_-10px_rgba(255,90,78,0.7)] hover:bg-[#F2443A] active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-[#FF5A4E]/30'
 const btnGhost =
   'h-11 px-5 rounded-2xl border-2 border-[#E4DFFA] bg-white text-[#4B2BF0] text-sm font-semibold hover:bg-[#F6F4FF] active:scale-[0.98] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20'
 const btnSmGhost =
-  'h-9 px-3.5 rounded-xl border-2 border-[#E4DFFA] bg-white text-[#4B2BF0] text- font-semibold hover:bg-[#F6F4FF] active:scale-[0.98] transition'
+  'h-9 px-3.5 rounded-xl border-2 border-[#E4DFFA] bg-white text-[#4B2BF0] text-[12px] font-semibold hover:bg-[#F6F4FF] active:scale-[0.98] transition'
 const btnSmSave =
-  'h-9 px-3.5 rounded-xl bg-[#4B2BF0] text-white text- font-semibold hover:bg-[#3A1FD0] active:scale-[0.98] transition'
+  'h-9 px-3.5 rounded-xl bg-[#4B2BF0] text-white text-[12px] font-semibold hover:bg-[#3A1FD0] active:scale-[0.98] transition'
 const btnSmDanger =
-  'h-9 px-3.5 rounded-xl border-2 border-[#FFC9C2] bg-[#FFF1EF] text-[#B42318] text- font-semibold hover:bg-[#FFE1DD] active:scale-[0.98] transition disabled:opacity-60'
+  'h-9 px-3.5 rounded-xl border-2 border-[#FFC9C2] bg-[#FFF1EF] text-[#B42318] text-[12px] font-semibold hover:bg-[#FFE1DD] active:scale-[0.98] transition disabled:opacity-60'
 const iconClose =
   'h-10 w-10 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-sm font-bold hover:bg-[#E2DBFF] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20'
 
@@ -63,14 +61,12 @@ const formatShiftTime = (value: string | null) => {
 const initials = (name?: string | null) =>
   (name || '?').split(' ').filter(Boolean).slice(0, 2).map(s => s[0]?.toUpperCase()).join('') || '?'
 
-// 8-character random password: crypto-random, no look-alike characters (0/O, 1/l/I),
-// always contains a lowercase letter, an uppercase letter and a digit.
 const PW_LOWER = 'abcdefghjkmnpqrstuvwxyz'
 const PW_UPPER = 'ABCDEFGHJKMNPQRSTUVWXYZ'
 const PW_DIGIT = '23456789'
 
 function randInt(max: number): number {
-  const limit = Math.floor(0x100000000 / max) * max // rejection sampling: no modulo bias
+  const limit = Math.floor(0x100000000 / max) * max
   const buf = new Uint32Array(1)
   let x: number
   do { crypto.getRandomValues(buf); x = buf[0] } while (x >= limit)
@@ -91,18 +87,16 @@ function generatePassword(): string {
 
 function ActivePill({ active }: { active: boolean }) {
   return active ? (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E3FBF2] text-[#0B7A55] px-2.5 py-1 text- font-semibold">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E3FBF2] text-[#0B7A55] px-2.5 py-1 text-[12px] font-semibold">
       <span className="w-1.5 h-1.5 rounded-full bg-[#2EE6A6]" aria-hidden /> Active
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 text-slate-500 px-2.5 py-1 text- font-semibold">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 text-slate-500 px-2.5 py-1 text-[12px] font-semibold">
       <span className="w-1.5 h-1.5 rounded-full bg-slate-400" aria-hidden /> Inactive
     </span>
   )
 }
 
-// 12-hour time picker (hour, minutes, AM/PM). Always 12-hour, whatever the device's regional setting is.
-// Its value is text like "09:00 AM", which is what the form and parseShiftTime already use.
 const PICKER_HOURS = Array.from({ length: 12 }, (_, i) => i + 1)
 const PICKER_MINUTES = Array.from({ length: 60 }, (_, i) => i)
 
@@ -113,10 +107,10 @@ function TimePicker12({ label, value, onChange }: { label: string; value: string
   const emit = (h: number, m: number, p: string) =>
     onChange(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} ${p}`)
   const selectClass =
-    'h-12 w-full min-w-0 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-2 text- sm:text-sm text-[#14102B] transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15'
+    'h-12 w-full min-w-0 rounded-2xl border-2 border-[#E4DFFA] bg-[#FAF9FF] px-2 text-[16px] sm:text-sm text-[#14102B] transition-colors focus:outline-none focus:border-[#4B2BF0] focus:bg-white focus:ring-4 focus:ring-[#4B2BF0]/15'
   return (
     <fieldset className="min-w-0">
-      <legend className="mb-1.5 block text- font-semibold text-[#14102B]">{label}</legend>
+      <legend className="mb-1.5 block text-[13px] font-semibold text-[#14102B]">{label}</legend>
       <div className="grid grid-cols-3 gap-2">
         <select aria-label={`${label} hour`} value={hour12} onChange={(e) => emit(Number(e.target.value), minute, period)} className={selectClass}>
           {PICKER_HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
@@ -139,13 +133,13 @@ function Chip({ children, tone = 'violet' }: { children: React.ReactNode; tone?:
     amber: 'bg-[#FFF4D6] text-[#8A5A00]',
     plain: 'bg-slate-100 text-slate-600',
   }
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text- font-semibold ${tones[tone]}`}>{children}</span>
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-[12px] font-semibold ${tones[tone]}`}>{children}</span>
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text- font-semibold text-[#14102B] mb-1.5">{label}</span>
+      <span className="block text-[13px] font-semibold text-[#14102B] mb-1.5">{label}</span>
       {children}
     </label>
   )
@@ -250,7 +244,6 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     } catch { setWorkLogs([]) } finally { setLoadingLogs(false) }
   }
 
-  // FIX 2: use server action (service role) instead of client anon key
   const handleAdd = async () => {
     if (!form.email || !form.full_name) { alert('Name and email required'); return }
     if (!form.password) { alert('Password is required'); return }
@@ -312,7 +305,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
         <Field label="Shift ends"><input type="text" inputMode="text" placeholder="04:00 PM" value={formatShiftTime(ed.shift_ends || '16:00')} onChange={(e) => setEditing({ ...ed, shift_ends: e.target.value })} className={fieldInput} /></Field>
       </div>
       <Field label="Group"><input value={ed.department || ''} onChange={(e) => setEditing({ ...ed, department: e.target.value })} className={fieldInput} /></Field>
-      <label className="flex items-center gap-3 rounded-2xl bg-[#F6F4FF] px-4 h-12 text- font-semibold text-[#14102B]">
+      <label className="flex items-center gap-3 rounded-2xl bg-[#F6F4FF] px-4 h-12 text-[14px] font-semibold text-[#14102B]">
         <input type="checkbox" checked={ed.is_active} onChange={(e) => setEditing({ ...ed, is_active: e.target.checked })} className="w-5 h-5 accent-[#4B2BF0]" />
         Active account
       </label>
@@ -330,14 +323,22 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-[#14102B]/55 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative bg-white w-full sm:max-w-6xl h- sm:h-auto sm:max-h- overflow-hidden shadow-2xl flex flex-col rounded-t- sm:rounded-">
+          <div className="relative bg-white w-full sm:max-w-6xl h-[94vh] sm:h-auto sm:max-h-[90vh] overflow-hidden shadow-2xl flex flex-col rounded-t-[28px] sm:rounded-[28px]">
             <div className="p-4 sm:p-5 border-b border-[#EEEAFF] flex justify-between items-center gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <h2 className={`${display.className} text- sm:text- font-extrabold text-[#14102B]`}>Employees</h2>
+                <h2 className={`${display.className} text-[20px] sm:text-[22px] font-extrabold text-[#14102B]`}>Employees</h2>
                 <Chip>{query ? `${visibleList.length} / ${list.length}` : list.length}</Chip>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => { setForm({ full_name: '', email: '', role: 'employee', work_type: 'Hybrid', shift_start: '07:00 AM', shift_ends: '04:00 PM', department: '', password: '[STRIPPED 1173 bytes]')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full text- font-bold text-[#4B2BF0] hover:bg-[#EEEAFF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B2BF0]">✕</button>}
+                <button onClick={() => { setForm({ full_name: '', email: '', role: 'employee', work_type: 'Hybrid', shift_start: '07:00 AM', shift_ends: '04:00 PM', department: '', password: '' }); setShowAddModal(true) }} className={btnPrimary}>+ Add</button>
+                <button onClick={() => setOpen(false)} className={iconClose} aria-label="Close">✕</button>
+              </div>
+            </div>
+            <div className="px-4 sm:px-5 py-3 border-b border-[#EEEAFF] bg-[#FAF9FF]">
+              <div className="relative">
+                <svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, email, role or group" aria-label="Search employees" autoComplete="off" spellCheck={false} className="w-full h-11 rounded-xl border-2 border-[#E4DFFA] bg-white pl-10 pr-10 text-[16px] sm:text-[13px] text-[#14102B] placeholder:text-slate-400 focus:outline-none focus:border-[#4B2BF0] focus:ring-4 focus:ring-[#4B2BF0]/15" />
+                {search && <button type="button" onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full text-[12px] font-bold text-[#4B2BF0] hover:bg-[#EEEAFF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4B2BF0]">✕</button>}
               </div>
             </div>
             <div className="overflow-auto flex-1">
@@ -345,35 +346,25 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                 {visibleList.map((emp) => (
                   <li key={emp.id} className="p-4">
                     {editing?.id === emp.id ? renderMobileEdit(editing) : (
-                      <>
-                        <div onClick={() => handleOpenSummary(emp)} className="flex flex-col">
-                          <div className="flex items-start gap-3">
-                            <div className="w-11 h-11 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text- font-bold">{initials(emp.full_name)}</div>
-                            <div className="min-w-0 flex-1">
-                              <button onClick={() => handleOpenSummary(emp)} className="text-left font-semibold text- text-[#14102B] hover:text-[#4B2BF0] focus:outline-none" title="View working records summary">{emp.full_name}</button>
-                              <div className="text- text-slate-500 break-all">{emp.email}</div>
-                            </div>
-                            <ActivePill active={emp.is_active} />
+                      <div className="flex flex-col">
+                        <div className="flex items-start gap-3">
+                          <div className="w-11 h-11 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[13px] font-bold">{initials(emp.full_name)}</div>
+                          <div className="min-w-0 flex-1">
+                            <button onClick={() => handleOpenSummary(emp)} className="text-left font-semibold text-[15px] text-[#14102B] hover:text-[#4B2BF0] focus:outline-none" title="View working records summary">{emp.full_name}</button>
+                            <div className="text-[12px] text-slate-500 break-all">{emp.email}</div>
                           </div>
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            <Chip>{emp.role}</Chip><Chip tone="plain">{emp.work_type}</Chip><Chip tone="plain">{emp.department || 'No group'}</Chip><Chip tone="amber"><span className="tabular-nums">{formatShiftTime(emp.shift_start || '07:00')} – {formatShiftTime(emp.shift_ends || '16:00')}</span></Chip>
-                          </div>
-                          <div onClick={(e) => e.stopPropagation()} className="mt-3 grid grid-cols-3 gap-2">
-                            <button onClick={() => handleOpenSummary(emp)} className={btnSmGhost}>Records</button>
-                            <button onClick={(e) => { e.stopPropagation(); setEditing(emp); }} className={btnSmGhost}>Edit</button>
-                            <button disabled={loading} onClick={(e) => { e.stopPropagation(); openDelete(emp); }} className={btnSmDanger}>Delete</button>
-                          </div>
+                          <ActivePill active={emp.is_active} />
                         </div>
-                      </>
+                        <div className="mt-3 flex flex-wrap gap-1.5"><Chip>{emp.role}</Chip><Chip tone="plain">{emp.work_type}</Chip><Chip tone="plain">{emp.department || 'No group'}</Chip><Chip tone="amber"><span className="tabular-nums">{formatShiftTime(emp.shift_start || '07:00')} – {formatShiftTime(emp.shift_ends || '16:00')}</span></Chip></div>
+                        <div onClick={(e) => e.stopPropagation()} className="mt-3 grid grid-cols-3 gap-2"><button onClick={() => handleOpenSummary(emp)} className={btnSmGhost}>Records</button><button onClick={(e) => { e.stopPropagation(); setEditing(emp); }} className={btnSmGhost}>Edit</button><button disabled={loading} onClick={(e) => { e.stopPropagation(); openDelete(emp); }} className={btnSmDanger}>Delete</button></div>
+                      </div>
                     )}
                   </li>
                 ))}
                 {visibleList.length === 0 && <li className="p-10 text-center text-sm text-slate-500">{list.length === 0 ? 'No employees yet. Tap + Add to create one.' : `No employees match "${search.trim()}".`}</li>}
               </ul>
-              <table className="hidden md:table w-full table-fixed text-">
-                <thead className="sticky top-0 bg-[#F6F4FF] text-slate-600">
-                  <tr><th className="text-left p-2 pl-3 w-[22%] font-semibold">Full name</th><th className="text-left p-2 w-[16%] font-semibold">Email</th><th className="text-left p-2 w-[7%] font-semibold">Role</th><th className="text-left p-2 w-[8%] font-semibold">Work type</th><th className="text-left p-2 w-[8%] font-semibold">Shift start</th><th className="text-left p-2 w-[8%] font-semibold">Shift ends</th><th className="text-left p-2 w-[7%] font-semibold">Group</th><th className="text-left p-2 w-[8%] font-semibold">Active</th><th className="text-left p-2 pr-3 w-[16%] font-semibold">Actions</th></tr>
-                </thead>
+              <table className="hidden md:table w-full table-fixed text-[12px]">
+                <thead className="sticky top-0 bg-[#F6F4FF] text-slate-600"><tr><th className="text-left p-2 pl-3 w-[22%] font-semibold">Full name</th><th className="text-left p-2 w-[16%] font-semibold">Email</th><th className="text-left p-2 w-[7%] font-semibold">Role</th><th className="text-left p-2 w-[8%] font-semibold">Work type</th><th className="text-left p-2 w-[8%] font-semibold">Shift start</th><th className="text-left p-2 w-[8%] font-semibold">Shift ends</th><th className="text-left p-2 w-[7%] font-semibold">Group</th><th className="text-left p-2 w-[8%] font-semibold">Active</th><th className="text-left p-2 pr-3 w-[16%] font-semibold">Actions</th></tr></thead>
                 <tbody>
                   {visibleList.map((emp) => (
                     <tr key={emp.id} onClick={() => editing?.id !== emp.id && handleOpenSummary(emp)} className="border-t border-[#EEEAFF] hover:bg-[#FAF9FF] cursor-pointer" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && editing?.id !== emp.id && handleOpenSummary(emp)}>
@@ -391,7 +382,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                         </>
                       ) : (
                         <>
-                          <td className="p-2 pl-3 align-middle"><div className="flex items-center gap-2"><div className="w-8 h-8 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text- font-bold">{initials(emp.full_name)}</div><button className="whitespace-nowrap text-left font-semibold text-[#14102B] hover:text-[#4B2BF0] hover:underline cursor-pointer focus:outline-none" title="Click to view working records summary">{emp.full_name}</button></div></td>
+                          <td className="p-2 pl-3 align-middle"><div className="flex items-center gap-2"><div className="w-8 h-8 shrink-0 rounded-full bg-[#EEEAFF] text-[#4B2BF0] grid place-items-center text-[11px] font-bold">{initials(emp.full_name)}</div><button className="whitespace-nowrap text-left font-semibold text-[#14102B] hover:text-[#4B2BF0] hover:underline cursor-pointer focus:outline-none" title="Click to view working records summary">{emp.full_name}</button></div></td>
                           <td className="p-2 align-middle break-all text-slate-600">{emp.email}</td><td className="p-2 align-middle"><Chip>{emp.role}</Chip></td><td className="p-2 align-middle break-words">{emp.work_type}</td><td className="p-2 align-middle tabular-nums">{formatShiftTime(emp.shift_start || '07:00')}</td><td className="p-2 align-middle tabular-nums">{formatShiftTime(emp.shift_ends || '16:00')}</td><td className="p-2 align-middle break-words">{emp.department || '-'}</td><td className="p-2 align-middle"><ActivePill active={emp.is_active} /></td>
                           <td className="p-2 align-middle"><div className="flex flex-wrap gap-1"><button onClick={(e) => { e.stopPropagation(); setEditing(emp); }} className={btnSmGhost}>Edit</button><button disabled={loading} onClick={(e) => { e.stopPropagation(); openDelete(emp); }} className={btnSmDanger}>Delete</button></div></td>
                         </>
@@ -408,15 +399,15 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       {summaryEmp && (
         <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-[#14102B]/60 backdrop-blur-sm" onClick={() => setSummaryEmp(null)} />
-          <div className="relative bg-white w-full sm:max-w-3xl shadow-2xl rounded-t- sm:rounded- max-h- flex flex-col overflow-hidden">
+          <div className="relative bg-white w-full sm:max-w-3xl shadow-2xl rounded-t-[28px] sm:rounded-[28px] max-h-[90vh] flex flex-col overflow-hidden">
             <div className="p-4 sm:p-6 border-b border-[#EEEAFF] flex justify-between items-start gap-3">
-              <div className="flex items-center gap-3 min-w-0"><div className="w-11 h-11 shrink-0 rounded-full bg-[#4B2BF0] text-white grid place-items-center text- font-bold">{initials(summaryEmp.full_name)}</div><div className="min-w-0"><h2 className={`${display.className} text- sm:text- font-bold text-[#14102B] leading-tight`}>{summaryEmp.full_name}&apos;s working records</h2><p className="text- text-slate-500 truncate">{summaryEmp.email} · {summaryEmp.department || 'No group'} · {summaryEmp.work_type}</p></div></div>
+              <div className="flex items-center gap-3 min-w-0"><div className="w-11 h-11 shrink-0 rounded-full bg-[#4B2BF0] text-white grid place-items-center text-[13px] font-bold">{initials(summaryEmp.full_name)}</div><div className="min-w-0"><h2 className={`${display.className} text-[18px] sm:text-[20px] font-bold text-[#14102B] leading-tight`}>{summaryEmp.full_name}&apos;s working records</h2><p className="text-[12px] text-slate-500 truncate">{summaryEmp.email} · {summaryEmp.department || 'No group'} · {summaryEmp.work_type}</p></div></div>
               <button onClick={() => setSummaryEmp(null)} className={iconClose} aria-label="Close">✕</button>
             </div>
             {!loadingLogs && monthOptions.length > 0 && (
               <div className="px-4 sm:px-6 py-3 border-b border-[#EEEAFF] flex gap-2 overflow-x-auto" role="tablist" aria-label="Filter by month">
                 {['all', ...monthOptions].map((m) => (
-                  <button key={m} role="tab" aria-selected={summaryMonth === m} onClick={() => setSummaryMonth(m)} className={`shrink-0 h-9 px-4 rounded-full text- font-semibold border-2 transition active:scale-[0.98] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20 ${summaryMonth === m ? 'bg-[#4B2BF0] border-[#4B2BF0] text-white' : 'bg-white border-[#E4DFFA] text-[#4B2BF0] hover:bg-[#F6F4FF]'}`}>{m === 'all' ? 'All months' : monthLabel(m)}</button>
+                  <button key={m} role="tab" aria-selected={summaryMonth === m} onClick={() => setSummaryMonth(m)} className={`shrink-0 h-9 px-4 rounded-full text-[13px] font-semibold border-2 transition active:scale-[0.98] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20 ${summaryMonth === m ? 'bg-[#4B2BF0] border-[#4B2BF0] text-white' : 'bg-white border-[#E4DFFA] text-[#4B2BF0] hover:bg-[#F6F4FF]'}`}>{m === 'all' ? 'All months' : monthLabel(m)}</button>
                 ))}
               </div>
             )}
@@ -425,15 +416,15 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
                 <>
                   <ul className="sm:hidden divide-y divide-[#EEEAFF]">
                     {filteredLogs.map((log, idx) => (
-                      <li key={log.id || idx} className="px-4 py-3 flex items-center justify-between gap-3"><div><div className="text- font-semibold text-[#14102B]">{formatDate(log.date)}</div><div className="text- text-slate-500 tabular-nums">{formatTime12hr(log.clock_in)} → {formatTime12hr(log.clock_out)}</div></div><Chip tone="amber"><span className="tabular-nums">{calculateHours(log.clock_in, log.clock_out)}</span></Chip></li>
+                      <li key={log.id || idx} className="px-4 py-3 flex items-center justify-between gap-3"><div><div className="text-[14px] font-semibold text-[#14102B]">{formatDate(log.date)}</div><div className="text-[12px] text-slate-500 tabular-nums">{formatTime12hr(log.clock_in)} → {formatTime12hr(log.clock_out)}</div></div><Chip tone="amber"><span className="tabular-nums">{calculateHours(log.clock_in, log.clock_out)}</span></Chip></li>
                     ))}
                   </ul>
-                  <table className="hidden sm:table w-full text-"><thead className="sticky top-0 bg-[#F6F4FF] text-slate-600"><tr><th className="text-left p-3 pl-6 font-semibold">Date</th><th className="text-left p-3 font-semibold">Clock in</th><th className="text-left p-3 font-semibold">Clock out</th><th className="text-left p-3 pr-6 font-semibold">Total work hours</th></tr></thead><tbody>{filteredLogs.map((log, idx) => (<tr key={log.id || idx} className="border-t border-[#EEEAFF] hover:bg-[#FAF9FF]"><td className="p-3 pl-6 text-slate-600">{formatDate(log.date)}</td><td className="p-3 tabular-nums">{formatTime12hr(log.clock_in)}</td><td className="p-3 tabular-nums">{formatTime12hr(log.clock_out)}</td><td className="p-3 pr-6 font-semibold text-[#4B2BF0] tabular-nums">{calculateHours(log.clock_in, log.clock_out)}</td></tr>))}</tbody></table>
+                  <table className="hidden sm:table w-full text-[13px]"><thead className="sticky top-0 bg-[#F6F4FF] text-slate-600"><tr><th className="text-left p-3 pl-6 font-semibold">Date</th><th className="text-left p-3 font-semibold">Clock in</th><th className="text-left p-3 font-semibold">Clock out</th><th className="text-left p-3 pr-6 font-semibold">Total work hours</th></tr></thead><tbody>{filteredLogs.map((log, idx) => (<tr key={log.id || idx} className="border-t border-[#EEEAFF] hover:bg-[#FAF9FF]"><td className="p-3 pl-6 text-slate-600">{formatDate(log.date)}</td><td className="p-3 tabular-nums">{formatTime12hr(log.clock_in)}</td><td className="p-3 tabular-nums">{formatTime12hr(log.clock_out)}</td><td className="p-3 pr-6 font-semibold text-[#4B2BF0] tabular-nums">{calculateHours(log.clock_in, log.clock_out)}</td></tr>))}</tbody></table>
                 </>
               )}
             </div>
-            <div className="p-4 sm:px-6 border-t border-[#EEEAFF] flex justify-between items-center gap-3 text- text-slate-500">
-              <div className="flex flex-col gap-0.5"><div className="flex flex-col sm:flex-row sm:gap-4"><span>Records: <span className="font-semibold text-[#14102B]">{filteredLogs.length}</span></span><span>Total hours: <span className="font-semibold text-[#14102B] tabular-nums">{filteredHours.toFixed(2)} hrs</span></span></div><span className="text- text-slate-400">All times in Philippines time (UTC+8)</span></div>
+            <div className="p-4 sm:px-6 border-t border-[#EEEAFF] flex justify-between items-center gap-3 text-[12px] text-slate-500">
+              <div className="flex flex-col gap-0.5"><div className="flex flex-col sm:flex-row sm:gap-4"><span>Records: <span className="font-semibold text-[#14102B]">{filteredLogs.length}</span></span><span>Total hours: <span className="font-semibold text-[#14102B] tabular-nums">{filteredHours.toFixed(2)} hrs</span></span></div><span className="text-[11px] text-slate-400">All times in Philippines time (UTC+8)</span></div>
               <button onClick={() => setSummaryEmp(null)} className={btnGhost}>Close</button>
             </div>
           </div>
@@ -442,17 +433,17 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       {resetting && (
         <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-[#14102B]/60 backdrop-blur-sm" onClick={() => !resetBusy && setResetting(null)} />
-          <div role="dialog" aria-modal="true" aria-label="Reset password" className="relative bg-white w-full sm:max-w-md shadow-2xl rounded-t- sm:rounded- max-h- overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-label="Reset password" className="relative bg-white w-full sm:max-w-md shadow-2xl rounded-t-[28px] sm:rounded-[28px] max-h-[92vh] overflow-y-auto">
             <div className="p-5 sm:p-6 border-b border-[#EEEAFF] flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0"><div className="w-11 h-11 shrink-0 rounded-full bg-[#4B2BF0] text-white grid place-items-center text- font-bold">{initials(resetting.full_name)}</div><div className="min-w-0"><h3 className={`${display.className} text- font-extrabold text-[#14102B] leading-tight`}>Reset password</h3><div className="text- text-slate-500 truncate">{resetting.full_name} · {resetting.email}</div></div></div>
+              <div className="flex items-center gap-3 min-w-0"><div className="w-11 h-11 shrink-0 rounded-full bg-[#4B2BF0] text-white grid place-items-center text-[13px] font-bold">{initials(resetting.full_name)}</div><div className="min-w-0"><h3 className={`${display.className} text-[18px] font-extrabold text-[#14102B] leading-tight`}>Reset password</h3><div className="text-[12px] text-slate-500 truncate">{resetting.full_name} · {resetting.email}</div></div></div>
               <button onClick={() => setResetting(null)} disabled={resetBusy} className={iconClose} aria-label="Close">✕</button>
             </div>
             <div className="p-5 sm:p-6 space-y-4">
-              {resetDone ? <p role="status" className="text- text-[#0B7A55] bg-[#E3FBF2] border border-[#B7F0DA] rounded-2xl p-3">Password updated for {resetting.full_name}. Copy it now and share it securely. It won&apos;t be shown again after you close this window.</p> : <div className="flex items-center justify-between gap-3"><label htmlFor="new-password" className="text- font-semibold text-[#14102B]">Enter new password</label><button type="button" onClick={() => { setNewPassword(generatePassword()); setCopied(false); setResetErr('') }} className="h-8 px-3 rounded-full bg-[#EEEAFF] text-[#4B2BF0] text- font-semibold hover:bg-[#E2DBFF] active:scale-[0.98] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20">Generate</button></div>}
+              {resetDone ? <p role="status" className="text-[14px] text-[#0B7A55] bg-[#E3FBF2] border border-[#B7F0DA] rounded-2xl p-3">Password updated for {resetting.full_name}. Copy it now and share it securely. It won&apos;t be shown again after you close this window.</p> : <div className="flex items-center justify-between gap-3"><label htmlFor="new-password" className="text-[13px] font-semibold text-[#14102B]">Enter new password</label><button type="button" onClick={() => { setNewPassword(generatePassword()); setCopied(false); setResetErr('') }} className="h-8 px-3 rounded-full bg-[#EEEAFF] text-[#4B2BF0] text-[12px] font-semibold hover:bg-[#E2DBFF] active:scale-[0.98] transition focus:outline-none focus-visible:ring-4 focus-visible:ring-[#4B2BF0]/20">Generate</button></div>}
               <div className="flex gap-2"><input id="new-password" type="text" value={newPassword} onChange={(e) => { setNewPassword(e.target.value); setCopied(false) }} readOnly={resetDone} autoComplete="off" spellCheck={false} maxLength={72} placeholder="At least 8 characters" className={`${fieldInput} font-mono tracking-wider`} /><button type="button" onClick={copyPassword} disabled={!newPassword} className={`${btnGhost} shrink-0 !px-4`} aria-label="Copy password">{copied ? 'Copied' : 'Copy'}</button></div>
               {!resetDone && <Field label="Reason (optional)"><input value={resetReason} onChange={(e) => setResetReason(e.target.value)} maxLength={300} placeholder="e.g. Forgot their password" className={fieldInput} /></Field>}
-              {resetErr && <div role="alert" className="text- text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] p-3 rounded-2xl">{resetErr}</div>}
-              {!resetDone && <p className="text- text-slate-400">This reset is recorded in the admin changes log. The password itself is never stored there.</p>}
+              {resetErr && <div role="alert" className="text-[13px] text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] p-3 rounded-2xl">{resetErr}</div>}
+              {!resetDone && <p className="text-[11px] text-slate-400">This reset is recorded in the admin changes log. The password itself is never stored there.</p>}
               {resetDone ? <button onClick={() => setResetting(null)} className={`${btnPrimary} w-full`}>Done</button> : <div className="grid grid-cols-2 gap-2"><button onClick={() => setResetting(null)} disabled={resetBusy} className={btnGhost}>Cancel</button><button onClick={confirmReset} disabled={resetBusy || !newPassword} className={btnPrimary}>{resetBusy ? 'Saving...' : 'Reset password'}</button></div>}
             </div>
           </div>
@@ -461,15 +452,15 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       {deleting && (
         <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-[#14102B]/60 backdrop-blur-sm" onClick={() => !deleteBusy && setDeleting(null)} />
-          <div role="dialog" aria-modal="true" aria-label="Delete employee" className="relative bg-white w-full sm:max-w-md shadow-2xl rounded-t- sm:rounded- max-h- overflow-y-auto">
+          <div role="dialog" aria-modal="true" aria-label="Delete employee" className="relative bg-white w-full sm:max-w-md shadow-2xl rounded-t-[28px] sm:rounded-[28px] max-h-[92vh] overflow-y-auto">
             <div className="p-5 sm:p-6 border-b border-[#EEEAFF] flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0"><div className="w-11 h-11 shrink-0 rounded-full bg-[#FFF1EF] text-[#B42318] grid place-items-center text- font-bold">{initials(deleting.full_name)}</div><div className="min-w-0"><h3 className={`${display.className} text- font-extrabold text-[#14102B] leading-tight`}>Delete employee</h3><div className="text- text-slate-500 truncate">{deleting.full_name} · {deleting.email}</div></div></div>
+              <div className="flex items-center gap-3 min-w-0"><div className="w-11 h-11 shrink-0 rounded-full bg-[#FFF1EF] text-[#B42318] grid place-items-center text-[13px] font-bold">{initials(deleting.full_name)}</div><div className="min-w-0"><h3 className={`${display.className} text-[18px] font-extrabold text-[#14102B] leading-tight`}>Delete employee</h3><div className="text-[12px] text-slate-500 truncate">{deleting.full_name} · {deleting.email}</div></div></div>
               <button onClick={() => setDeleting(null)} disabled={deleteBusy} className={iconClose} aria-label="Close">✕</button>
             </div>
             <div className="p-5 sm:p-6 space-y-4">
-              <p className="text- text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] rounded-2xl p-3">This permanently deletes {deleting.full_name}&apos;s account and profile, and they can no longer sign in. This can&apos;t be undone, but the deletion will be recorded in the admin changes log.</p>
+              <p className="text-[14px] text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] rounded-2xl p-3">This permanently deletes {deleting.full_name}&apos;s account and profile, and they can no longer sign in. This can&apos;t be undone, but the deletion will be recorded in the admin changes log.</p>
               <Field label="Reason (optional)"><input value={deleteReason} onChange={(e) => setDeleteReason(e.target.value)} maxLength={300} placeholder="e.g. Left the company" className={fieldInput} /></Field>
-              {deleteErr && <div role="alert" className="text- text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] p-3 rounded-2xl">{deleteErr}</div>}
+              {deleteErr && <div role="alert" className="text-[13px] text-[#B42318] bg-[#FFF1EF] border border-[#FFC9C2] p-3 rounded-2xl">{deleteErr}</div>}
               <div className="grid grid-cols-2 gap-2"><button onClick={() => setDeleting(null)} disabled={deleteBusy} className={btnGhost}>Cancel</button><button onClick={confirmDelete} disabled={deleteBusy} className="h-11 px-5 rounded-2xl bg-[#B42318] text-white text-sm font-bold hover:bg-[#912018] active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-4 focus-visible:ring-[#B42318]/30">{deleteBusy ? 'Deleting...' : 'Delete'}</button></div>
             </div>
           </div>
@@ -478,9 +469,9 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
       {showAddModal && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4">
           <div className="absolute inset-0 bg-[#14102B]/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
-          <div className="relative bg-white w-full sm:max-w-md shadow-2xl rounded-t- sm:rounded- max-h- overflow-y-auto">
+          <div className="relative bg-white w-full sm:max-w-md shadow-2xl rounded-t-[28px] sm:rounded-[28px] max-h-[92vh] overflow-y-auto">
             <div className="sticky top-0 bg-white z-10 p-5 sm:p-6 pb-3 flex justify-between items-center border-b border-[#EEEAFF]">
-              <h2 className={`${display.className} text- font-extrabold text-[#14102B]`}>Add employee</h2>
+              <h2 className={`${display.className} text-[22px] font-extrabold text-[#14102B]`}>Add employee</h2>
               <button onClick={() => setShowAddModal(false)} className={iconClose} aria-label="Close">✕</button>
             </div>
             <div className="p-5 sm:p-6 flex flex-col gap-4">
