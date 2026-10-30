@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation'
 import { Bricolage_Grotesque } from 'next/font/google'
 import { deleteEmployee, resetEmployeePassword, updateEmployee } from '@/app/admin/actions'
 
-const display = Bricolage_Grotesque({ subsets: ['latin'], weight: ['500', '700', '800'] })
+const display = Bricolage_Grotesque({ 
+  subsets: ['latin'],
+  display: 'swap'
+})
 
 type Employee = {
   id: string
