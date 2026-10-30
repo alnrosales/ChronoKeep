@@ -369,7 +369,7 @@ export default function EmployeesManager({ employees, trigger }: { employees: Em
     // Create a temporary client that does NOT persist session
     const tempSupabase = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       { auth: { persistSession: false, autoRefreshToken: false } }
     )
 
