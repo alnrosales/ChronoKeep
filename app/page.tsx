@@ -10,3 +10,5 @@ export default async function Home() {
   if (profile?.role === 'admin') redirect('/admin')
   redirect('/employee')
 }
+
+console.log("USING SUPABASE URL:", process.env.NEXT_PUBLIC_SUPABASE_URL)
